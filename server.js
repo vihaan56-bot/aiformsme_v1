@@ -159,6 +159,16 @@ app.post('/api/auth/verify-otp', (req, res) => {
   });
 });
 
+// Serve static files from the React frontend build
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Wildcard route to serve index.html for client routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`[SERVER] Express Server running on http://localhost:${PORT}`);
 });
