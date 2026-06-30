@@ -1,0 +1,642 @@
+import React, { useState, useEffect } from 'react';
+import { Sparkles, ShoppingBag, Calendar, Check, Send, PhoneCall, ChevronRight, AlertCircle, ArrowLeft } from 'lucide-react';
+import { db, isFirebaseConfigured } from '../firebase';
+import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
+import FloatingBotWidget from './FloatingBotWidget';
+
+// Built-in theme definitions mapping theme keys to CSS styles
+const THEMES = {
+  amber: {
+    primary: '35 85% 55%',
+    primaryLight: '35 85% 70%',
+    secondary: '25 75% 50%',
+    bgDark: '28 25% 8%',
+    bgCard: '28 20% 12%',
+    bgCardHover: '28 20% 16%',
+    text: '30 20% 98%',
+    textMuted: '30 10% 65%',
+    borderColor: '30 15% 18%'
+  },
+  mint: {
+    primary: '150 75% 45%',
+    primaryLight: '150 75% 60%',
+    secondary: '165 70% 40%',
+    bgDark: '160 20% 7%',
+    bgCard: '160 15% 11%',
+    bgCardHover: '160 15% 15%',
+    text: '150 10% 98%',
+    textMuted: '150 5% 65%',
+    borderColor: '160 10% 16%'
+  },
+  breeze: {
+    primary: '200 85% 50%',
+    primaryLight: '200 85% 65%',
+    secondary: '215 80% 45%',
+    bgDark: '210 25% 8%',
+    bgCard: '210 20% 12%',
+    bgCardHover: '210 20% 16%',
+    text: '200 20% 98%',
+    textMuted: '200 10% 65%',
+    borderColor: '210 15% 18%'
+  },
+  cyber: {
+    primary: '320 90% 60%',
+    primaryLight: '320 90% 75%',
+    secondary: '180 100% 50%',
+    bgDark: '260 30% 5%',
+    bgCard: '260 20% 8%',
+    bgCardHover: '260 20% 12%',
+    text: '0 0% 98%',
+    textMuted: '260 10% 65%',
+    borderColor: '260 25% 14%'
+  },
+  rose: {
+    primary: '340 75% 70%',
+    primaryLight: '340 75% 85%',
+    secondary: '320 60% 60%',
+    bgDark: '340 15% 8%',
+    bgCard: '340 10% 12%',
+    bgCardHover: '340 10% 16%',
+    text: '340 10% 98%',
+    textMuted: '340 5% 65%',
+    borderColor: '340 8% 18%'
+  }
+};
+
+// Seed/Default configuration in case database document is missing
+const SEED_SITES = {
+  joes_bakery: {
+    slug: 'joes_bakery',
+    bizName: "Joe's Bakery",
+    theme: 'amber',
+    template: 'bakery',
+    title: 'Artisanal Breads & Delectable Pastries Baked Daily',
+    subtitle: 'Welcome to Joe\'s Bakery, where every ingredient is selected with care, and every item is baked with love.',
+    about: 'Established in 2016, Joe\'s Bakery has been a cornerstone of the neighborhood. We utilize stone-ground local grains and long fermentation processes to create sourdoughs, croissants, and sweet treats that comfort the soul and delight the palate.',
+    products: [
+      { name: 'Sourdough Country Loaf', price: '₹150', desc: 'Naturally leavened crusty bread, baked in stone hearth.' },
+      { name: 'Almond Croissant', price: '₹120', desc: 'Twice-baked flaky croissant filled with sweet almond frangipane.' },
+      { name: 'Custom Birthday Cake', price: '₹1,200+', desc: 'Three layers of sponge, homemade buttercream, customized decorations.' },
+      { name: 'Cinnamon Roll', price: '₹90', desc: 'Soft brioche dough rolled with Saigon cinnamon and cream cheese glaze.' }
+    ],
+    botConfig: {
+      bizName: "Joe's Bakery",
+      systemPrompt: "You are a friendly assistant for Joe's Bakery. Tell customers about our fresh croissants, breads, and custom wedding cakes. If they want to order or book a consultation, ask for their name, email, and description of what they want.",
+      requireEmail: true,
+      requirePhone: false,
+      selectedModel: 'openrouter/free',
+      apiKey: ''
+    },
+    enableBot: true
+  },
+  fit_studio: {
+    slug: 'fit_studio',
+    bizName: 'Apex Fitness Studio',
+    theme: 'breeze',
+    template: 'fitness',
+    title: 'Unleash Your Strength. Achieve Your Apex.',
+    subtitle: 'Premium training sessions, state-of-the-art weights, and a supportive community to power your fitness journey.',
+    about: 'At Apex Fitness, we believe in building sustainable fitness habits. Our certified personal trainers and high-intensity group classes are designed to push you safely past your boundaries to achieve real, measurable results.',
+    products: [
+      { name: 'Standard Monthly Pass', price: '₹1,999/mo', desc: 'Unlimited access to gym facilities, locker rooms, and group warmups.' },
+      { name: 'Elite Personal Coaching', price: '₹1,500/hr', desc: 'One-on-one tailored program design and weekly nutritional audits.' },
+      { name: 'HIIT & Conditioning Class', price: '₹399/class', desc: '45-minute intense cardiovascular circuits led by group instructors.' },
+      { name: 'Apex Shaker Bottle & Supplement', price: '₹699', desc: 'Leakproof double-insulated steel bottle with pre-workout mix pack.' }
+    ],
+    botConfig: {
+      bizName: 'Apex Fitness Studio',
+      systemPrompt: "You are the AI coach for Apex Fitness Studio. Guide customers on memberships, personal training packages, and class schedules. Ask for their name and phone number to schedule a free fitness evaluation call.",
+      requireEmail: false,
+      requirePhone: true,
+      selectedModel: 'openrouter/free',
+      apiKey: ''
+    },
+    enableBot: true
+  }
+};
+
+export default function GeneratedWebsite({ slug, onBackToPlatform }) {
+  const [siteConfig, setSiteConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Form State
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', msg: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  useEffect(() => {
+    async function loadSite() {
+      setLoading(true);
+      setError(null);
+
+      // 1. Try Firebase Firestore
+      if (isFirebaseConfigured && db) {
+        try {
+          const docRef = doc(db, 'websites', slug);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setSiteConfig(docSnap.data());
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('[WEBSITE] Failed to read from Firebase:', err);
+        }
+      }
+
+      // 2. Try LocalStorage
+      try {
+        const storedSites = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
+        if (storedSites[slug]) {
+          setSiteConfig(storedSites[slug]);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('[WEBSITE] Failed to read from LocalStorage:', err);
+      }
+
+      // 3. Try Seed data
+      if (SEED_SITES[slug]) {
+        setSiteConfig(SEED_SITES[slug]);
+      } else {
+        setError(`Website /${slug} not found. You can create it in the Bot Sandbox!`);
+      }
+      setLoading(false);
+    }
+
+    loadSite();
+  }, [slug]);
+
+  // Set page title dynamically
+  useEffect(() => {
+    if (siteConfig) {
+      document.title = `${siteConfig.bizName} - Powered by AIForMSME`;
+    }
+    return () => {
+      document.title = 'AIForMSME Studio - Automation Platform';
+    };
+  }, [siteConfig]);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '16px', background: '#0a0f1d', color: '#fff' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTopColor: '#8b5cf6', animation: 'spin 1s infinite linear' }} />
+        <span>Loading Custom Website Sandbox...</span>
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}} />
+      </div>
+    );
+  }
+
+  if (error || !siteConfig) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '20px', background: '#0a0f1d', color: '#fff', padding: '24px', textAlign: 'center' }}>
+        <AlertCircle size={48} style={{ color: '#ef4444' }} />
+        <h2 style={{ fontSize: '1.8rem' }}>Website Sandbox Not Found</h2>
+        <p style={{ color: '#94a3b8', maxWidth: '400px' }}>{error || 'The requested URL slug has not been generated yet.'}</p>
+        <button 
+          onClick={onBackToPlatform} 
+          style={{ background: '#8b5cf6', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}
+        >
+          <ArrowLeft size={16} /> Return to AIForMSME Platform
+        </button>
+      </div>
+    );
+  }
+
+  // Load theme colors
+  const themeVars = THEMES[siteConfig.theme] || THEMES.amber;
+
+  // Apply variables to style container dynamically
+  const siteStyle = {
+    '--theme-primary': `hsl(${themeVars.primary})`,
+    '--theme-primary-light': `hsl(${themeVars.primaryLight})`,
+    '--theme-secondary': `hsl(${themeVars.secondary})`,
+    '--theme-bg-dark': `hsl(${themeVars.bgDark})`,
+    '--theme-bg-card': `hsl(${themeVars.bgCard})`,
+    '--theme-bg-card-hover': `hsl(${themeVars.bgCardHover})`,
+    '--theme-text': `hsl(${themeVars.text})`,
+    '--theme-text-muted': `hsl(${themeVars.textMuted})`,
+    '--theme-border': `hsl(${themeVars.borderColor})`,
+    
+    backgroundColor: 'var(--theme-bg-dark)',
+    color: 'var(--theme-text)',
+    fontFamily: '"Plus Jakarta Sans", sans-serif',
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative'
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
+
+    setSubmitting(true);
+    const newLead = {
+      name: formData.name,
+      email: formData.email || 'N/A',
+      phone: formData.phone || 'N/A',
+      note: formData.msg || `Contact Form submission on /${slug}`,
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      source: `Website /${slug}`
+    };
+
+    // PUSH LEAD TO FIREBASE
+    if (isFirebaseConfigured && db) {
+      try {
+        await addDoc(collection(db, 'leads'), newLead);
+      } catch (err) {
+        console.error('[WEBSITE] Failed to write lead to Firestore:', err);
+      }
+    }
+
+    // Always log locally to sync frontend count just in case
+    try {
+      const storedLeads = JSON.parse(localStorage.getItem('aiformsme_leads') || '[]');
+      localStorage.setItem('aiformsme_leads', JSON.stringify([newLead, ...storedLeads]));
+      
+      // Dispatch custom event to let App.jsx know count has updated
+      window.dispatchEvent(new Event('aiformsme_lead_added'));
+    } catch (err) {
+      console.error(err);
+    }
+
+    setSubmitting(false);
+    setSubmitSuccess(true);
+    setFormData({ name: '', email: '', phone: '', msg: '' });
+    
+    setTimeout(() => {
+      setSubmitSuccess(false);
+    }, 5000);
+  };
+
+  return (
+    <div style={siteStyle}>
+
+
+      {/* Website Navigation Header */}
+      <header style={{
+        padding: '20px 8%',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: '1px solid var(--theme-border)',
+        background: 'rgba(var(--theme-bg-dark), 0.5)',
+        backdropFilter: 'blur(8px)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '-0.02em', color: 'white' }}>
+          <Sparkles style={{ color: 'var(--theme-primary)' }} size={20} />
+          <span>{siteConfig.bizName}</span>
+        </div>
+        <nav style={{ display: 'flex', gap: '24px', fontSize: '0.9rem', fontWeight: '500' }}>
+          <a href="#home" style={{ color: 'white' }}>Home</a>
+          <a href="#about" style={{ color: 'var(--theme-text-muted)' }}>About Us</a>
+          <a href="#services" style={{ color: 'var(--theme-text-muted)' }}>{siteConfig.template === 'bakery' ? 'Menu' : 'Services'}</a>
+          <a href="#contact" style={{ color: 'var(--theme-text-muted)' }}>Contact</a>
+        </nav>
+        <div>
+          <a href="#contact" style={{
+            background: 'var(--theme-primary)',
+            color: 'white',
+            padding: '8px 18px',
+            borderRadius: '6px',
+            fontWeight: '600',
+            fontSize: '0.85rem'
+          }}>
+            Get Quote
+          </a>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section id="home" style={{
+        padding: '100px 8% 80px 8%',
+        background: 'radial-gradient(circle at 70% 30%, var(--theme-primary-light) / 0.05, transparent 50%)',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '24px'
+      }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--theme-primary) / 0.1', border: '1px solid var(--theme-primary) / 0.25', color: 'var(--theme-primary)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          ✨ Now Open & Ready to Serve
+        </div>
+        <h1 style={{ fontSize: '3rem', fontWeight: '800', lineHeight: '1.15', maxWidth: '800px', color: 'white', letterSpacing: '-0.03em' }}>
+          {siteConfig.title}
+        </h1>
+        <p style={{ fontSize: '1.1rem', color: 'var(--theme-text-muted)', maxWidth: '650px', lineHeight: '1.6' }}>
+          {siteConfig.subtitle}
+        </p>
+        <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+          <a href="#contact" style={{
+            background: 'var(--theme-primary)',
+            color: 'white',
+            padding: '12px 30px',
+            borderRadius: '8px',
+            fontWeight: '700',
+            boxShadow: '0 4px 12px var(--theme-primary) / 0.25'
+          }}>
+            Contact Us
+          </a>
+          <a href="#services" style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--theme-border)',
+            color: 'white',
+            padding: '12px 30px',
+            borderRadius: '8px',
+            fontWeight: '600'
+          }}>
+            Browse Catalog
+          </a>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" style={{
+        padding: '80px 8%',
+        borderTop: '1px solid var(--theme-border)',
+        background: 'rgba(255,255,255,0.01)'
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', alignItems: 'center' }}>
+          <div>
+            <div style={{ color: 'var(--theme-primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Our Story</div>
+            <h2 style={{ fontSize: '2rem', color: 'white', marginBottom: '16px' }}>Who We Are & What We Value</h2>
+            <p style={{ color: 'var(--theme-text-muted)', lineHeight: '1.7', fontSize: '0.95rem' }}>
+              {siteConfig.about}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Check style={{ color: 'var(--theme-primary)', flexShrink: 0, marginTop: '2px' }} size={16} />
+                <div>
+                  <h4 style={{ color: 'white', fontSize: '0.9rem' }}>Locally Sourced</h4>
+                  <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.8rem' }}>100% natural and community products.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <Check style={{ color: 'var(--theme-primary)', flexShrink: 0, marginTop: '2px' }} size={16} />
+                <div>
+                  <h4 style={{ color: 'white', fontSize: '0.9rem' }}>Expertly Prepared</h4>
+                  <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.8rem' }}>Handcrafted by passionate artisans.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{
+            background: 'var(--theme-bg-card)',
+            border: '1px solid var(--theme-border)',
+            borderRadius: '16px',
+            padding: '40px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', borderRadius: '50%', background: 'var(--theme-primary)', opacity: '0.08', filter: 'blur(30px)' }} />
+            <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Operating Hours</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--theme-text-muted)' }}>Monday - Friday</span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>7:00 AM - 6:00 PM</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--theme-text-muted)' }}>Saturday</span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>8:00 AM - 4:00 PM</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--theme-text-muted)' }}>Sunday</span>
+                <span style={{ color: 'var(--theme-primary)' }}>Closed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Services/Menu Catalog Section */}
+      <section id="services" style={{
+        padding: '80px 8%',
+        borderTop: '1px solid var(--theme-border)',
+        textAlign: 'center'
+      }}>
+        <div style={{ color: 'var(--theme-primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Our Offerings</div>
+        <h2 style={{ fontSize: '2rem', color: 'white', marginBottom: '40px' }}>
+          {siteConfig.template === 'bakery' ? 'Freshly Baked Menu' : 'Premium Services List'}
+        </h2>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: '24px'
+        }}>
+          {siteConfig.products?.map((item, idx) => (
+            <div 
+              key={idx} 
+              style={{
+                background: 'var(--theme-bg-card)',
+                border: '1px solid var(--theme-border)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                transition: 'all 0.3s'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: '700' }}>{item.name}</h4>
+                <span style={{ color: 'var(--theme-primary-light)', fontWeight: 'bold', fontSize: '1rem', background: 'var(--theme-primary) / 0.1', padding: '2px 8px', borderRadius: '4px' }}>
+                  {item.price}
+                </span>
+              </div>
+              <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem', lineHeight: '1.5', flex: 1 }}>
+                {item.desc}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--theme-primary)', fontWeight: 'bold', marginTop: '4px', cursor: 'pointer' }}>
+                Inquire Details <ChevronRight size={12} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" style={{
+        padding: '80px 8%',
+        borderTop: '1px solid var(--theme-border)',
+        background: 'rgba(255,255,255,0.01)'
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '50px' }}>
+          <div>
+            <div style={{ color: 'var(--theme-primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Get In Touch</div>
+            <h2 style={{ fontSize: '2rem', color: 'white', marginBottom: '16px' }}>Ready to Get Started?</h2>
+            <p style={{ color: 'var(--theme-text-muted)', lineHeight: '1.6', fontSize: '0.9rem', marginBottom: '30px' }}>
+              Fill out the form to request a custom order, pricing inquiry, or detailed consultation. Our team responds within 24 hours.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--theme-primary) / 0.1', display: 'flex', alignItems: 'center', justify_content: 'center', color: 'var(--theme-primary)' }}>
+                  <PhoneCall size={16} />
+                </div>
+                <div>
+                  <h4 style={{ color: 'white', fontSize: '0.85rem', margin: 0 }}>Call Center Support</h4>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>+1 (555) 482-9012</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'var(--theme-bg-card)',
+            border: '1px solid var(--theme-border)',
+            borderRadius: '16px',
+            padding: '30px'
+          }}>
+            <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Your Name *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--theme-border)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      color: 'white',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Email Address</label>
+                  <input 
+                    type="email" 
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--theme-border)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      color: 'white',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Phone Number</label>
+                <input 
+                  type="text" 
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--theme-border)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    color: 'white',
+                    fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Inquiry Message</label>
+                <textarea 
+                  rows={4}
+                  value={formData.msg}
+                  onChange={(e) => setFormData({ ...formData, msg: e.target.value })}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--theme-border)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    color: 'white',
+                    fontSize: '0.85rem',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+
+              {submitSuccess && (
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid rgba(34, 197, 94, 0.25)',
+                  color: '#4ade80',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  ✓ Inquiry successfully submitted! Our team will reach you shortly.
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                disabled={submitting}
+                style={{
+                  background: 'var(--theme-primary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Send size={16} /> {submitting ? 'Submitting...' : 'Send Message'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{
+        marginTop: 'auto',
+        padding: '40px 8%',
+        background: 'rgba(0,0,0,0.2)',
+        borderTop: '1px solid var(--theme-border)',
+        fontSize: '0.85rem',
+        color: 'var(--theme-text-muted)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <span>© 2026 {siteConfig.bizName}. All rights reserved. Powered by AIForMSME.</span>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Use</a>
+        </div>
+      </footer>
+
+      {/* Render Dynamic Custom Floating Chatbot Assistant */}
+      {siteConfig.enableBot && (
+        <FloatingBotWidget 
+          bizName={siteConfig.bizName}
+          botConfig={siteConfig.botConfig}
+          themeColors={themeVars}
+        />
+      )}
+    </div>
+  );
+}
