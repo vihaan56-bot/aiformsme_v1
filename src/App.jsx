@@ -10,6 +10,7 @@ import AuthPortal from './components/AuthPortal';
 import FloatingAssistant from './components/FloatingAssistant';
 import PromoBanner from './components/PromoBanner';
 import GeneratedWebsite from './components/GeneratedWebsite';
+import DonationPanel from './components/DonationPanel';
 import { db, isFirebaseConfigured } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
@@ -271,6 +272,7 @@ export default function App() {
           <>
             <Hero onNavigate={navigateTo} />
             <ServiceCatalog onSelectDemo={selectDemo} />
+            <DonationPanel />
           </>
         )}
 
