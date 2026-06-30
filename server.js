@@ -54,6 +54,69 @@ app.post('/api/auth/send-otp', async (req, res) => {
   // Save to memory store
   otpStore[email.toLowerCase()] = { otp, expiresAt, name };
 
+  // 1. Try Resend HTTP API first if key exists (never blocked by Render port restrictions)
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    try {
+      console.log(`[AUTH] Attempting HTTP Resend dispatch to ${email}...`);
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'AIForMSME <onboarding@resend.dev>',
+          to: email,
+          subject: `AIForMSME Verification Code: ${otp}`,
+          html: `
+            <div style="background-color: #0f172a; color: #f8fafc; padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.05);">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="color: #06b6d4; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">AI<span style="color:#ffffff;">ForMSME</span></h2>
+                <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Security & Onboarding Portal</p>
+              </div>
+              
+              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px;">
+                <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-top: 0;">
+                  Hello ${name || 'User'},
+                </p>
+                <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
+                  Welcome to the AIForMSME application. Your security verification code for logging in or creating your account is:
+                </p>
+                
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); padding: 20px; border-radius: 8px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #ec4899; margin: 28px 0; text-shadow: 0 0 10px rgba(236,72,153,0.15);">
+                  ${otp}
+                </div>
+                
+                <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 0;">
+                  This verification code is valid for <strong>5 minutes</strong>. If you did not initiate this login request, please discard this email.
+                </p>
+              </div>
+ 
+              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 20px; margin-top: 32px; font-size: 11px; color: #64748b; text-align: center;">
+                &copy; 2026 AIForMSME Studio. Empowering Micro, Small, and Medium Enterprises.
+              </div>
+            </div>
+          `
+        })
+      });
+
+      if (response.ok) {
+        console.log(`[AUTH] Resend HTTP dispatch succeeded for ${email}`);
+        return res.json({
+          success: true,
+          simulated: false,
+          message: 'Verification code dispatched to your Inbox.'
+        });
+      } else {
+        const errText = await response.text();
+        console.warn('[AUTH] Resend HTTP failed, trying SMTP fallback:', errText);
+      }
+    } catch (err) {
+      console.warn('[AUTH] Resend request failed, trying SMTP fallback:', err.message);
+    }
+  }
+
   const transporter = getTransporter();
 
   // If SMTP is NOT configured, run in simulated mode
