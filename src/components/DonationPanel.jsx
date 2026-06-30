@@ -151,7 +151,7 @@ export default function DonationPanel() {
 
   return (
     <section className="section-padding" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative' }}>
-      <div style={{
+      <div className="donation-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '40px',

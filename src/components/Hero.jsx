@@ -4,7 +4,7 @@ import { ArrowRight, Bot, Star, Play, Sparkles } from 'lucide-react';
 export default function Hero({ onNavigate }) {
   return (
     <section className="section-padding animate-slide-up" style={{ minHeight: '85vh', display: 'flex', alignItems: 'center' }}>
-      <div style={{
+      <div className="hero-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1.2fr 0.8fr',
         gap: '40px',

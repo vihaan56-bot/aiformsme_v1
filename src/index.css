@@ -507,4 +507,25 @@ a {
     gap: 16px;
     text-align: center;
   }
+
+  /* Responsive helper overrides to stack side-by-side grids on mobile screen */
+  .hero-grid,
+  .pricing-grid,
+  .donation-grid,
+  .chatbot-grid,
+  .generated-site-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  
+  .generated-site-grid-half {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-portal-card {
+    padding: 24px 18px !important;
+  }
 }

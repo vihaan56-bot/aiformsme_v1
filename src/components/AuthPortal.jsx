@@ -88,7 +88,7 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
       padding: '20px'
     }}>
       <div 
-        className="glass-panel glass-panel-glow animate-slide-up"
+        className="auth-portal-card glass-panel glass-panel-glow animate-slide-up"
         style={{
           width: '100%',
           maxWidth: '440px',

@@ -40,7 +40,7 @@ export default function PricingCalculator() {
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '30px', alignItems: 'stretch' }}>
+      <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '30px', alignItems: 'stretch' }}>
         
         {/* Sliders Form Panel */}
         <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>

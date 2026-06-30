@@ -560,7 +560,7 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
 
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'stretch' }}>
+      <div className="chatbot-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'stretch' }}>
         
         {/* Left Side: Bot Builder Form */}
         <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

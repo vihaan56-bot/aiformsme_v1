@@ -496,14 +496,14 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
         borderTop: '1px solid var(--theme-border)',
         background: 'rgba(255,255,255,0.01)'
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', alignItems: 'center' }}>
+        <div className="generated-site-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', alignItems: 'center' }}>
           <div>
             <div style={{ color: 'var(--theme-primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Our Story</div>
             <h2 style={{ fontSize: '2rem', color: 'white', marginBottom: '16px' }}>Who We Are & What We Value</h2>
             <p style={{ color: 'var(--theme-text-muted)', lineHeight: '1.7', fontSize: '0.95rem' }}>
               {siteConfig.about}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
+            <div className="generated-site-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <Check style={{ color: 'var(--theme-primary)', flexShrink: 0, marginTop: '2px' }} size={16} />
                 <div>
@@ -624,7 +624,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
         borderTop: '1px solid var(--theme-border)',
         background: 'rgba(255,255,255,0.01)'
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '50px' }}>
+        <div className="generated-site-grid" style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '50px' }}>
           <div>
             <div style={{ color: 'var(--theme-primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Get In Touch</div>
             <h2 style={{ fontSize: '2rem', color: 'white', marginBottom: '16px' }}>Ready to Get Started?</h2>
@@ -652,7 +652,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
             padding: '30px'
           }}>
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="generated-site-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Your Name *</label>
                   <input 
