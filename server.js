@@ -15,217 +15,75 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// In-memory OTP store: { email: { otp, expiresAt, name } }
-const otpStore = {};
-
-// Create SMTP transporter if credentials exist
-const getTransporter = () => {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_PASS;
-
-  if (!user || !pass) {
-    return null;
+// In-memory persistent users store for operators (Seeded with custom default operator credentials)
+const usersStore = {
+  "alokaiml.training@gmail.com": {
+    name: "Alok Kumar",
+    email: "alokaiml.training@gmail.com",
+    password: "password123"
   }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass
-    },
-    connectionTimeout: 4000, // 4 seconds timeout limit to prevent hanging
-    greetingTimeout: 4000,
-    socketTimeout: 4000
-  });
 };
 
-// Route: Send OTP
-app.post('/api/auth/send-otp', async (req, res) => {
-  const { email, name, type } = req.body;
+// Route: User Registration
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password } = req.body;
 
-  if (!email) {
-    return res.status(400).json({ success: false, message: 'Email address is required.' });
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Full name, email, and password are required.' });
   }
 
-  // Generate 6-digit OTP code
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-
-  // Save to memory store
-  otpStore[email.toLowerCase()] = { otp, expiresAt, name };
-
-  // 1. Try Resend HTTP API first if key exists (never blocked by Render port restrictions)
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) {
-    try {
-      console.log(`[AUTH] Attempting HTTP Resend dispatch to ${email}...`);
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'AIForMSME <onboarding@resend.dev>',
-          to: email,
-          subject: `AIForMSME Verification Code: ${otp}`,
-          html: `
-            <div style="background-color: #0f172a; color: #f8fafc; padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="text-align: center; margin-bottom: 24px;">
-                <h2 style="color: #06b6d4; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">AI<span style="color:#ffffff;">ForMSME</span></h2>
-                <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Security & Onboarding Portal</p>
-              </div>
-              
-              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px;">
-                <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-top: 0;">
-                  Hello ${name || 'User'},
-                </p>
-                <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-                  Welcome to the AIForMSME application. Your security verification code for logging in or creating your account is:
-                </p>
-                
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); padding: 20px; border-radius: 8px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #ec4899; margin: 28px 0; text-shadow: 0 0 10px rgba(236,72,153,0.15);">
-                  ${otp}
-                </div>
-                
-                <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 0;">
-                  This verification code is valid for <strong>5 minutes</strong>. If you did not initiate this login request, please discard this email.
-                </p>
-              </div>
- 
-              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 20px; margin-top: 32px; font-size: 11px; color: #64748b; text-align: center;">
-                &copy; 2026 AIForMSME Studio. Empowering Micro, Small, and Medium Enterprises.
-              </div>
-            </div>
-          `
-        })
-      });
-
-      if (response.ok) {
-        console.log(`[AUTH] Resend HTTP dispatch succeeded for ${email}`);
-        return res.json({
-          success: true,
-          simulated: false,
-          message: 'Verification code dispatched to your Inbox.'
-        });
-      } else {
-        const errText = await response.text();
-        console.warn('[AUTH] Resend HTTP failed, trying SMTP fallback:', errText);
-      }
-    } catch (err) {
-      console.warn('[AUTH] Resend request failed, trying SMTP fallback:', err.message);
-    }
+  const emailKey = email.toLowerCase().trim();
+  if (usersStore[emailKey]) {
+    return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
   }
 
-  const transporter = getTransporter();
-
-  // If SMTP is NOT configured, run in simulated mode
-  if (!transporter) {
-    console.log(`[AUTH SIMULATOR] OTP for ${email}: ${otp}`);
-    return res.json({
-      success: true,
-      simulated: true,
-      otp: otp,
-      message: 'SMTP credentials (GMAIL_USER/GMAIL_PASS) not configured. Verification code printed here for evaluation.'
-    });
-  }
-
-  // Live Gmail SMTP dispatch
-  try {
-    const mailOptions = {
-      from: `"AIForMSME Studio" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: `AIForMSME Verification Code: ${otp}`,
-      html: `
-        <div style="background-color: #0f172a; color: #f8fafc; padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.05);">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #06b6d4; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">AI<span style="color:#ffffff;">ForMSME</span></h2>
-            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Security & Onboarding Portal</p>
-          </div>
-          
-          <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px;">
-            <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-top: 0;">
-              Hello ${name || 'User'},
-            </p>
-            <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-              Welcome to the AIForMSME application. Your security verification code for logging in or creating your account is:
-            </p>
-            
-            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); padding: 20px; border-radius: 8px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #ec4899; margin: 28px 0; text-shadow: 0 0 10px rgba(236,72,153,0.15);">
-              ${otp}
-            </div>
-            
-            <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 0;">
-              This verification code is valid for <strong>5 minutes</strong>. If you did not initiate this login request, please discard this email.
-            </p>
-          </div>
- 
-          <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 20px; margin-top: 32px; font-size: 11px; color: #64748b; text-align: center;">
-            &copy; 2026 AIForMSME Studio. Empowering Micro, Small, and Medium Enterprises.
-          </div>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`[AUTH] Live OTP sent successfully to ${email}`);
-    
-    return res.json({
-      success: true,
-      simulated: false,
-      message: 'Verification code dispatched to your Gmail Inbox.'
-    });
-
-  } catch (error) {
-    console.error('[AUTH ERROR] SMTP Transport failed, falling back to simulated sandbox:', error.message);
-    
-    // Automatically fall back to returning simulated OTP directly so authentication doesn't hang or fail on blocked ports
-    return res.json({
-      success: true,
-      simulated: true,
-      otp: otp,
-      message: `Gmail SMTP Port blocked or failed: ${error.message || error}. Verification code printed here for evaluation.`
-    });
-  }
-});
-
-// Route: Verify OTP
-app.post('/api/auth/verify-otp', (req, res) => {
-  const { email, otp } = req.body;
-
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, message: 'Email and verification code are required.' });
-  }
-
-  const stored = otpStore[email.toLowerCase()];
-
-  if (!stored) {
-    return res.status(400).json({ success: false, message: 'No verification code requested for this email address.' });
-  }
-
-  if (Date.now() > stored.expiresAt) {
-    delete otpStore[email.toLowerCase()];
-    return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new one.' });
-  }
-
-  if (stored.otp !== otp.trim()) {
-    return res.status(400).json({ success: false, message: 'Incorrect verification code. Please try again.' });
-  }
-
-  // Success: generate user session payload and clear code
-  const userPayload = {
-    email: email.toLowerCase(),
-    name: stored.name || email.split('@')[0],
-    role: 'Client Operator',
-    token: 'mock-session-jwt-token-' + Date.now()
+  // Create new user profile in memory
+  usersStore[emailKey] = {
+    name: name.trim(),
+    email: emailKey,
+    password: password
   };
 
-  delete otpStore[email.toLowerCase()];
+  console.log(`[AUTH] Registered new operator user account: ${emailKey}`);
 
   return res.json({
     success: true,
-    user: userPayload,
-    message: 'Authentication successful. Welcome aboard!'
+    user: {
+      email: emailKey,
+      name: name.trim(),
+      role: 'Client Operator',
+      token: 'session-jwt-' + Date.now()
+    },
+    message: 'Operator workspace created successfully!'
+  });
+});
+
+// Route: User Login
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email address and password are required.' });
+  }
+
+  const emailKey = email.toLowerCase().trim();
+  const user = usersStore[emailKey];
+
+  if (!user || user.password !== password) {
+    return res.status(401).json({ success: false, message: 'Invalid email address or password. Please try again.' });
+  }
+
+  console.log(`[AUTH] Logged in operator user: ${emailKey}`);
+
+  return res.json({
+    success: true,
+    user: {
+      email: emailKey,
+      name: user.name,
+      role: 'Client Operator',
+      token: 'session-jwt-' + Date.now()
+    },
+    message: 'Welcome back! Login successful.'
   });
 });
 

@@ -1,35 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mail, User, ShieldCheck, X, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, User, ShieldCheck, X, RefreshCw, AlertCircle, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthPortal({ onClose, onLoginSuccess }) {
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [step, setStep] = useState('input'); // 'input' | 'otp'
-  const [otp, setOtp] = useState('');
-  const [timer, setTimer] = useState(60);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [simulatedOtp, setSimulatedOtp] = useState('');
 
-  const timerRef = useRef(null);
-
-  // Countdown timer logic
-  useEffect(() => {
-    if (step === 'otp' && timer > 0) {
-      timerRef.current = setTimeout(() => setTimer(prev => prev - 1), 1000);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [step, timer]);
-
-  const handleSendOtp = async (e) => {
-    if (e) e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
     setSuccessMsg('');
-    setSimulatedOtp('');
 
     if (!email.trim() || !email.includes('@') || !email.includes('.')) {
       setError('Please provide a valid email address.');
@@ -37,78 +22,44 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
     }
 
     if (mode === 'signup' && !name.trim()) {
-      setError('Please provide your name to register.');
+      setError('Please provide your full name.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/send-otp', {
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const payload = mode === 'login' 
+        ? { email: email.trim(), password }
+        : { name: name.trim(), email: email.trim(), password };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          name: mode === 'signup' ? name.trim() : '',
-          type: mode
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Verification request failed.');
+        throw new Error(data.message || 'Authentication failed.');
       }
 
       setSuccessMsg(data.message);
-      setTimer(60);
-      setStep('otp');
 
-      // If running in simulated mock mode (e.g. SMTP config not set)
-      if (data.simulated && data.otp) {
-        setSimulatedOtp(data.otp);
-      }
+      setTimeout(() => {
+        onLoginSuccess(data.user);
+        onClose();
+      }, 1000);
 
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    if (otp.trim().length !== 6 || isNaN(otp.trim())) {
-      setError('Please enter a valid 6-digit verification code.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          otp: otp.trim()
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'OTP verification failed.');
-      }
-
-      // Successful verification
-      onLoginSuccess(data.user);
-      onClose();
-
-    } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Server connection error.');
     } finally {
       setLoading(false);
     }
@@ -118,9 +69,7 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
     setMode(newMode);
     setError('');
     setSuccessMsg('');
-    setStep('input');
-    setOtp('');
-    setSimulatedOtp('');
+    setPassword('');
   };
 
   return (
@@ -145,7 +94,7 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
           maxWidth: '440px',
           padding: '36px',
           position: 'relative',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(6, 182, 212, 0.05) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(6, 182, 212, 0.05) 100%)',
           border: '1px solid rgba(255, 255, 255, 0.08)'
         }}
       >
@@ -180,65 +129,60 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
             AIForMSME Studio Auth
           </div>
           <h3 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '6px' }}>
-            {step === 'input' 
-              ? (mode === 'login' ? 'Welcome Back' : 'Create Operator Account') 
-              : 'Enter Security Code'
-            }
+            {mode === 'login' ? 'Welcome Back' : 'Create Operator Account'}
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
-            {step === 'input' 
-              ? (mode === 'login' ? 'Sign in securely with your registered email.' : 'Set up your MSME operator workspace.')
-              : `We sent a One-Time Password (OTP) to ${email}.`
+            {mode === 'login' 
+              ? 'Sign in securely with your operator password.' 
+              : 'Set up your MSME operator workspace credentials.'
             }
           </p>
         </div>
 
-        {/* Tab Selection (only visible in input step) */}
-        {step === 'input' && (
-          <div style={{
-            display: 'flex',
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            borderRadius: '10px',
-            padding: '4px',
-            marginBottom: '28px'
-          }}>
-            <button
-              onClick={() => switchMode('login')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
-                background: mode === 'login' ? 'linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%)' : 'transparent',
-                color: 'white',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => switchMode('signup')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
-                background: mode === 'signup' ? 'linear-gradient(90deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-dark)) 100%)' : 'transparent',
-                color: 'white',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Register
-            </button>
-          </div>
-        )}
+        {/* Tab Selection */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          borderRadius: '10px',
+          padding: '4px',
+          marginBottom: '28px'
+        }}>
+          <button
+            onClick={() => switchMode('login')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: 'none',
+              background: mode === 'login' ? 'linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%)' : 'transparent',
+              color: 'white',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            Log In
+          </button>
+          <button
+            onClick={() => switchMode('signup')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: 'none',
+              background: mode === 'signup' ? 'linear-gradient(90deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-dark)) 100%)' : 'transparent',
+              color: 'white',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            Register
+          </button>
+        </div>
 
         {/* Errors display */}
         {error && (
@@ -278,69 +222,36 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
           </div>
         )}
 
-        {/* Simulated Helper OTP Alert */}
-        {simulatedOtp && (
+        {/* Simulated Helper Admin Credentials Tip (Only in Login Mode) */}
+        {mode === 'login' && (
           <div style={{
             background: 'rgba(6, 182, 212, 0.08)',
             border: '1px dashed rgba(6, 182, 212, 0.3)',
             borderRadius: '8px',
-            padding: '14px',
+            padding: '12px',
             color: 'hsl(var(--secondary-light))',
-            fontSize: '0.8rem',
-            textAlign: 'center',
-            marginBottom: '20px'
+            fontSize: '0.75rem',
+            marginBottom: '20px',
+            lineHeight: '1.4'
           }}>
-            <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>
-              Simulated OTP Verification
-            </p>
-            <span style={{ fontSize: '1.4rem', fontWeight: '800', letterSpacing: '4px', color: 'white' }}>
-              {simulatedOtp}
-            </span>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.7rem', opacity: 0.8 }}>
-              No SMTP settings configured in .env yet. Copy this code above to verification box.
-            </p>
+            <strong>💡 Seeded Operator Account:</strong><br />
+            Email: <code style={{ color: 'white' }}>alokaiml.training@gmail.com</code><br />
+            Password: <code style={{ color: 'white' }}>password123</code>
           </div>
         )}
 
         {/* Form elements */}
-        {step === 'input' ? (
-          <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {mode === 'signup' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Full Name</label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
-                    disabled={loading}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px 12px 38px',
-                      background: 'rgba(15, 23, 42, 0.9)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '0.85rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {mode === 'signup' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Email Address</label>
+              <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Full Name</label>
               <div style={{ position: 'relative' }}>
-                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
+                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
                   disabled={loading}
                   required
                   style={{
@@ -356,110 +267,95 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
                 />
               </div>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={mode === 'signup' ? 'btn-primary' : 'btn-secondary'}
-              style={{
-                width: '100%',
-                padding: '12px',
-                marginTop: '10px',
-                fontSize: '0.9rem',
-                justifyContent: 'center',
-                borderColor: mode === 'login' ? 'hsl(var(--primary) / 0.5)' : undefined
-              }}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" style={{ marginRight: '8px' }} />
-                  Sending verification code...
-                </>
-              ) : 'Send OTP Verification'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-              <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', alignSelf: 'flex-start' }}>6-Digit OTP</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Email Address</label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
               <input
-                type="text"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="0 0 0 0 0 0"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
                 disabled={loading}
                 required
                 style={{
                   width: '100%',
-                  padding: '14px',
+                  padding: '12px 16px 12px 38px',
                   background: 'rgba(15, 23, 42, 0.9)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '8px',
                   color: 'white',
-                  fontSize: '1.4rem',
-                  fontWeight: '800',
-                  letterSpacing: '8px',
-                  textAlign: 'center',
-                  outline: 'none',
-                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
+                  fontSize: '0.85rem',
+                  outline: 'none'
                 }}
               />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '0.9rem',
-                justifyContent: 'center'
-              }}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" style={{ marginRight: '8px' }} />
-                  Verifying account...
-                </>
-              ) : 'Verify Code & Launch'}
-            </button>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: '0.75rem',
-              marginTop: '6px'
-            }}>
-              <span style={{ color: 'hsl(var(--text-muted))' }}>
-                Didn't get the email?
-              </span>
-              {timer > 0 ? (
-                <span style={{ color: 'hsl(var(--text-muted))', fontWeight: '500' }}>
-                  Resend in {timer}s
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={loading}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'hsl(var(--secondary-light))',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    padding: 0
-                  }}
-                >
-                  Resend Verification
-                </button>
-              )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Password</label>
+            <div style={{ position: 'relative' }}>
+              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                disabled={loading}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 42px 12px 38px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '0.85rem',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'hsl(var(--text-muted))',
+                  cursor: 'pointer'
+                }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
-          </form>
-        )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={mode === 'signup' ? 'btn-primary' : 'btn-secondary'}
+            style={{
+              width: '100%',
+              padding: '12px',
+              marginTop: '10px',
+              fontSize: '0.9rem',
+              justifyContent: 'center',
+              borderColor: mode === 'login' ? 'hsl(var(--primary) / 0.5)' : undefined
+            }}
+          >
+            {loading ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" style={{ marginRight: '8px' }} />
+                {mode === 'login' ? 'Logging in...' : 'Registering...'}
+              </>
+            ) : (mode === 'login' ? 'Log In Operator' : 'Register Operator Account')}
+          </button>
+        </form>
       </div>
     </div>
   );
