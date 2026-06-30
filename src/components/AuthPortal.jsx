@@ -222,23 +222,6 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
           </div>
         )}
 
-        {/* Simulated Helper Admin Credentials Tip (Only in Login Mode) */}
-        {mode === 'login' && (
-          <div style={{
-            background: 'rgba(6, 182, 212, 0.08)',
-            border: '1px dashed rgba(6, 182, 212, 0.3)',
-            borderRadius: '8px',
-            padding: '12px',
-            color: 'hsl(var(--secondary-light))',
-            fontSize: '0.75rem',
-            marginBottom: '20px',
-            lineHeight: '1.4'
-          }}>
-            <strong>💡 Seeded Operator Account:</strong><br />
-            Email: <code style={{ color: 'white' }}>alokaiml.training@gmail.com</code><br />
-            Password: <code style={{ color: 'white' }}>password123</code>
-          </div>
-        )}
 
         {/* Form elements */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

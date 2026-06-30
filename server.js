@@ -15,14 +15,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// In-memory persistent users store for operators (Seeded with custom default operator credentials)
-const usersStore = {
-  "alokaiml.training@gmail.com": {
-    name: "Alok Kumar",
-    email: "alokaiml.training@gmail.com",
-    password: "password123"
-  }
-};
+// In-memory persistent users store for operators (Starts completely empty)
+const usersStore = {};
 
 // Route: User Registration
 app.post('/api/auth/register', (req, res) => {
