@@ -125,6 +125,141 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Razorpay Checkout states
+  const [checkoutProduct, setCheckoutProduct] = useState(null);
+  const [checkoutForm, setCheckoutForm] = useState({ name: '', email: '', phone: '' });
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const parsePrice = (priceStr) => {
+    const cleaned = priceStr.replace(/[^\d]/g, '');
+    const num = parseInt(cleaned, 10);
+    return isNaN(num) ? 99 : num;
+  };
+
+  const handleInitiatePayment = async (e) => {
+    e.preventDefault();
+    if (!checkoutForm.name || !checkoutForm.phone) return;
+
+    setPaymentProcessing(true);
+    const amount = parsePrice(checkoutProduct.price);
+
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      alert("Failed to load payment gateway checkout libraries. Check your internet connection.");
+      setPaymentProcessing(false);
+      return;
+    }
+
+    try {
+      const ordRes = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount })
+      });
+      const orderData = await ordRes.json();
+
+      if (!orderData.success) {
+        throw new Error(orderData.message || "Failed to initiate payment transaction.");
+      }
+
+      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+      
+      const options = {
+        key: keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: siteConfig.bizName,
+        description: `Purchase: ${checkoutProduct.name}`,
+        order_id: orderData.simulated ? undefined : orderData.order_id,
+        handler: async function (response) {
+          const verifyRes = await fetch('/api/payment/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: orderData.order_id,
+              razorpay_payment_id: response.razorpay_payment_id || 'pay_simulated',
+              razorpay_signature: response.razorpay_signature || 'sig_simulated'
+            })
+          });
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.success) {
+            setPaymentSuccess(response.razorpay_payment_id || 'pay_simulated');
+            
+            // Push to CRM Lead collection as paid order!
+            const paymentLead = {
+              name: checkoutForm.name,
+              email: checkoutForm.email || 'N/A',
+              phone: checkoutForm.phone,
+              note: `💰 PAID ORDER: Purchased "${checkoutProduct.name}" for ${checkoutProduct.price}. TxRef: ${response.razorpay_payment_id || 'pay_simulated'}`,
+              date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+              source: `Razorpay Payment /${slug}`
+            };
+
+            if (isFirebaseConfigured && db) {
+              try {
+                await addDoc(collection(db, 'leads'), paymentLead);
+              } catch (err) {
+                console.error('[WEBSITE] Failed to write lead to Firestore:', err);
+              }
+            }
+
+            try {
+              const storedLeads = JSON.parse(localStorage.getItem('aiformsme_leads') || '[]');
+              localStorage.setItem('aiformsme_leads', JSON.stringify([paymentLead, ...storedLeads]));
+              window.dispatchEvent(new Event('aiformsme_lead_added'));
+            } catch (err) {
+              console.error(err);
+            }
+
+            setCheckoutProduct(null);
+            setCheckoutForm({ name: '', email: '', phone: '' });
+          } else {
+            alert(`Payment signature verification failed: ${verifyData.message}`);
+          }
+          setPaymentProcessing(false);
+        },
+        prefill: {
+          name: checkoutForm.name,
+          email: checkoutForm.email,
+          contact: checkoutForm.phone
+        },
+        theme: {
+          color: '#8b5cf6'
+        }
+      };
+
+      if (orderData.simulated) {
+        alert(`[RAZORPAY SIMULATOR] Simulated order initiated for ₹${amount}. Redirecting to instant sandbox mock verification...`);
+        setTimeout(() => {
+          options.handler({
+            razorpay_payment_id: `pay_sim_${Math.random().toString(36).substring(7)}`,
+            razorpay_signature: `sig_sim_${Math.random().toString(36).substring(7)}`
+          });
+        }, 1000);
+      } else {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
+
+    } catch (err) {
+      console.error('[RAZORPAY CHECKOUT ERROR]:', err);
+      alert(`Checkout transaction failed: ${err.message || err}`);
+      setPaymentProcessing(false);
+    }
+  };
+
   useEffect(() => {
     async function loadSite() {
       setLoading(true);
@@ -456,9 +591,28 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
               <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem', lineHeight: '1.5', flex: 1 }}>
                 {item.desc}
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--theme-primary)', fontWeight: 'bold', marginTop: '4px', cursor: 'pointer' }}>
-                Inquire Details <ChevronRight size={12} />
-              </div>
+              <button 
+                onClick={() => setCheckoutProduct(item)}
+                style={{
+                  marginTop: '12px',
+                  padding: '10px 16px',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  color: 'white',
+                  background: 'linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              >
+                <ShoppingBag size={14} /> Buy & Book Now
+              </button>
             </div>
           ))}
         </div>
@@ -636,6 +790,152 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
           botConfig={siteConfig.botConfig}
           themeColors={themeVars}
         />
+      )}
+
+      {/* Razorpay Checkout User Information Modal */}
+      {checkoutProduct && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(5, 8, 20, 0.85)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 3000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%', maxWidth: '480px',
+            padding: '30px', borderRadius: '16px',
+            background: 'linear-gradient(135deg, var(--theme-bg-card) 0%, rgba(139, 92, 246, 0.03) 100%)',
+            border: '1px solid var(--theme-border)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            position: 'relative'
+          }}>
+            {/* Close button */}
+            <button 
+              onClick={() => setCheckoutProduct(null)}
+              style={{
+                position: 'absolute', top: '15px', right: '15px',
+                background: 'none', border: 'none', color: 'var(--theme-text-muted)',
+                fontSize: '1.2rem', cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '50%',
+                background: 'var(--theme-primary) / 0.1', color: 'var(--theme-primary-light)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: '12px'
+              }}>
+                <ShoppingBag size={20} />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', color: 'white', fontWeight: 'bold' }}>Complete Your Booking</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)', marginTop: '4px' }}>
+                You are purchasing: <strong>{checkoutProduct.name}</strong> for <strong style={{ color: 'var(--theme-primary-light)' }}>{checkoutProduct.price}</strong>
+              </p>
+            </div>
+
+            <form onSubmit={handleInitiatePayment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Full Name *</label>
+                <input 
+                  type="text" required
+                  value={checkoutForm.name}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })}
+                  placeholder="e.g. John Doe"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--theme-border)',
+                    borderRadius: '8px', padding: '12px', color: 'white', fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Email Address</label>
+                <input 
+                  type="email"
+                  value={checkoutForm.email}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
+                  placeholder="e.g. john@example.com"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--theme-border)',
+                    borderRadius: '8px', padding: '12px', color: 'white', fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Phone Number *</label>
+                <input 
+                  type="tel" required
+                  value={checkoutForm.phone}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                  placeholder="e.g. 9876543210"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--theme-border)',
+                    borderRadius: '8px', padding: '12px', color: 'white', fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={paymentProcessing}
+                style={{
+                  background: 'linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%)',
+                  border: 'none', color: 'white', fontWeight: 'bold', fontSize: '0.9rem',
+                  padding: '14px', borderRadius: '8px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  marginTop: '10px', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.2)'
+                }}
+              >
+                {paymentProcessing ? (
+                  <>Processing Gateway...</>
+                ) : (
+                  <>
+                    <Check size={16} /> Pay {checkoutProduct.price} via Razorpay
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Notification Toast */}
+      {paymentSuccess && (
+        <div style={{
+          position: 'fixed', bottom: '30px', right: '30px',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          color: 'white', padding: '16px 24px', borderRadius: '12px',
+          boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)',
+          display: 'flex', alignItems: 'center', gap: '12px', zIndex: 4000,
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            ✓
+          </div>
+          <div>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Payment Successful!</h4>
+            <p style={{ fontSize: '0.75rem', opacity: 0.9, marginTop: '2px' }}>TxRef: {paymentSuccess}</p>
+          </div>
+          <button 
+            onClick={() => setPaymentSuccess(null)}
+            style={{
+              background: 'none', border: 'none', color: 'white',
+              fontSize: '1rem', cursor: 'pointer', marginLeft: '10px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

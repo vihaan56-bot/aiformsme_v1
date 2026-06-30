@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -157,6 +159,90 @@ app.post('/api/auth/verify-otp', (req, res) => {
     user: userPayload,
     message: 'Authentication successful. Welcome aboard!'
   });
+});
+
+// Initialize Razorpay Instance helper
+const getRazorpayInstance = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) {
+    console.log('[RAZORPAY] Credentials missing in env. Running in Sandbox Simulation mode.');
+    return null;
+  }
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret
+  });
+};
+
+// Route: Create Razorpay Order
+app.post('/api/payment/create-order', async (req, res) => {
+  const { amount, currency = 'INR', receipt = 'receipt_1' } = req.body;
+  if (!amount) {
+    return res.status(400).json({ success: false, message: 'Amount is required.' });
+  }
+
+  const razorpayInstance = getRazorpayInstance();
+  if (!razorpayInstance) {
+    // Return simulated sandbox payload
+    return res.json({
+      success: true,
+      simulated: true,
+      order_id: `order_sim_${Math.random().toString(36).substring(7)}`,
+      amount: Math.round(amount * 100),
+      currency: currency
+    });
+  }
+
+  try {
+    const options = {
+      amount: Math.round(amount * 100), // convert to paise
+      currency: currency,
+      receipt: receipt
+    };
+    const order = await razorpayInstance.orders.create(options);
+    return res.json({
+      success: true,
+      simulated: false,
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency
+    });
+  } catch (error) {
+    console.error('[RAZORPAY ORDER ERROR]:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Razorpay Order creation failed: ${error.message || error}`
+    });
+  }
+});
+
+// Route: Verify Razorpay Payment Signature
+app.post('/api/payment/verify-payment', (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keySecret) {
+    console.log('[RAZORPAY SIMULATOR] Verified simulated checkout.');
+    return res.json({ success: true, verified: true, message: 'Simulated payment verified.' });
+  }
+
+  try {
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature === razorpay_signature) {
+      return res.json({ success: true, verified: true, message: 'Payment verified successfully.' });
+    } else {
+      return res.status(400).json({ success: false, verified: false, message: 'Invalid payment signature.' });
+    }
+  } catch (error) {
+    console.error('[RAZORPAY VERIFY ERROR]:', error);
+    return res.status(500).json({ success: false, message: 'Payment signature verification error.' });
+  }
 });
 
 // Serve static files from the React frontend build
