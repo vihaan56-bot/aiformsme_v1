@@ -288,7 +288,7 @@ export default function App() {
 
             {/* Active Demo Render */}
             <div className="glass-panel" style={{ padding: '40px', background: 'rgba(10, 15, 30, 0.4)' }}>
-              <ChatbotDemo onAddLead={handleAddLead} />
+              <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} />
             </div>
           </section>
         )}

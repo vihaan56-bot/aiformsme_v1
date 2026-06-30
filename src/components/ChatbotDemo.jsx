@@ -3,7 +3,7 @@ import { Send, Settings, User, Bot, Trash2, Download, Table, CheckSquare, Globe,
 import { db, isFirebaseConfigured } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 
-export default function ChatbotDemo({ onAddLead }) {
+export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) {
   // Configuration State
   const [bizName, setBizName] = useState("Joe's Bakery");
   const [systemPrompt, setSystemPrompt] = useState("You are an friendly assistant for Joe's Bakery. Tell customers about our fresh croissants, breads, and custom wedding cakes. If they want to order or book a consultation, ask for their name, email, and description of what they want.");
@@ -88,6 +88,12 @@ export default function ChatbotDemo({ onAddLead }) {
   const handleGenerateWebsite = async (e) => {
     e.preventDefault();
     if (!slug.trim()) return;
+
+    if (!currentUser) {
+      alert("🔒 Authentication Required: You must be logged in to generate and launch your website. Please sign in first.");
+      if (onTriggerLogin) onTriggerLogin();
+      return;
+    }
 
     setWebLoading(true);
     const siteData = {
@@ -237,6 +243,11 @@ export default function ChatbotDemo({ onAddLead }) {
 
   // Handle system prompt adjustments -> Reset chat
   const handleConfigChange = () => {
+    if (!currentUser) {
+      alert("🔒 Authentication Required: You must be logged in to deploy and train your AI agent sandbox simulator. Please sign in first.");
+      if (onTriggerLogin) onTriggerLogin();
+      return;
+    }
     setMessages([
       { id: 1, sender: 'bot', text: `Chat reset. Welcome to ${bizName}! How can I help you today?` }
     ]);
