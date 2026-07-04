@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://aiformsme.co.in/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/demos</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/pricing</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/wizard</loc>
+    <priority>0.8</priority>
+  </url>
+</urlset>
