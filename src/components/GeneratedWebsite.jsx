@@ -669,7 +669,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
       }
 
       const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
-      
+
       const options = {
         key: keyId,
         amount: orderData.amount,
@@ -691,7 +691,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
           if (verifyData.success) {
             setPaymentSuccess(response.razorpay_payment_id || 'pay_simulated');
-            
+
             // Push to CRM Lead collection as paid order!
             const paymentLead = {
               name: checkoutForm.name,
@@ -814,7 +814,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '16px', background: '#0a0f1d', color: '#fff' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTopColor: '#8b5cf6', animation: 'spin 1s infinite linear' }} />
         <span>Loading Custom Website Sandbox...</span>
-        <style dangerouslySetInnerHTML={{__html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           @keyframes spin { to { transform: rotate(360deg); } }
         `}} />
       </div>
@@ -827,8 +828,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
         <AlertCircle size={48} style={{ color: '#ef4444' }} />
         <h2 style={{ fontSize: '1.8rem' }}>Website Sandbox Not Found</h2>
         <p style={{ color: '#94a3b8', maxWidth: '400px' }}>{error || 'The requested URL slug has not been generated yet.'}</p>
-        <button 
-          onClick={onBackToPlatform} 
+        <button
+          onClick={onBackToPlatform}
           style={{ background: '#8b5cf6', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}
         >
           <ArrowLeft size={16} /> Return to AIForMSME Platform
@@ -851,7 +852,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
     '--theme-text': `hsl(${themeVars.text})`,
     '--theme-text-muted': `hsl(${themeVars.textMuted})`,
     '--theme-border': `hsl(${themeVars.borderColor})`,
-    
+
     backgroundColor: 'var(--theme-bg-dark)',
     color: 'var(--theme-text)',
     fontFamily: '"Plus Jakarta Sans", sans-serif',
@@ -888,7 +889,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
     try {
       const storedLeads = JSON.parse(localStorage.getItem('aiformsme_leads') || '[]');
       localStorage.setItem('aiformsme_leads', JSON.stringify([newLead, ...storedLeads]));
-      
+
       // Dispatch custom event to let App.jsx know count has updated
       window.dispatchEvent(new Event('aiformsme_lead_added'));
     } catch (err) {
@@ -898,7 +899,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
     setSubmitting(false);
     setSubmitSuccess(true);
     setFormData({ name: '', email: '', phone: '', msg: '' });
-    
+
     setTimeout(() => {
       setSubmitSuccess(false);
     }, 5000);
@@ -1063,8 +1064,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
           gap: '24px'
         }}>
           {siteConfig.products?.map((item, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               style={{
                 background: 'var(--theme-bg-card)',
                 border: '1px solid var(--theme-border)',
@@ -1086,7 +1087,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
               <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem', lineHeight: '1.5', flex: 1 }}>
                 {item.desc}
               </p>
-              <button 
+              <button
                 onClick={() => setCheckoutProduct(item)}
                 style={{
                   marginTop: '12px',
@@ -1150,8 +1151,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
               <div className="generated-site-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Your Name *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -1167,8 +1168,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Email Address</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     style={{
@@ -1185,8 +1186,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Phone Number</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   style={{
@@ -1202,7 +1203,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Inquiry Message</label>
-                <textarea 
+                <textarea
                   rows={4}
                   value={formData.msg}
                   onChange={(e) => setFormData({ ...formData, msg: e.target.value })}
@@ -1234,7 +1235,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
                 </div>
               )}
 
-              <button 
+              <button
                 type="submit"
                 disabled={submitting}
                 style={{
@@ -1280,7 +1281,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
       {/* Render Dynamic Custom Floating Chatbot Assistant */}
       {siteConfig.enableBot && (
-        <FloatingBotWidget 
+        <FloatingBotWidget
           bizName={siteConfig.bizName}
           botConfig={siteConfig.botConfig}
           themeColors={themeVars}
@@ -1307,7 +1308,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
             position: 'relative'
           }}>
             {/* Close button */}
-            <button 
+            <button
               onClick={() => setCheckoutProduct(null)}
               style={{
                 position: 'absolute', top: '15px', right: '15px',
@@ -1336,7 +1337,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
             <form onSubmit={handleInitiatePayment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Full Name *</label>
-                <input 
+                <input
                   type="text" required
                   value={checkoutForm.name}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })}
@@ -1350,7 +1351,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Email Address</label>
-                <input 
+                <input
                   type="email"
                   value={checkoutForm.email}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
@@ -1364,7 +1365,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Phone Number *</label>
-                <input 
+                <input
                   type="tel" required
                   value={checkoutForm.phone}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
@@ -1376,7 +1377,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
                 />
               </div>
 
-              <button 
+              <button
                 type="submit"
                 disabled={paymentProcessing}
                 style={{
@@ -1421,7 +1422,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
             <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Payment Successful!</h4>
             <p style={{ fontSize: '0.75rem', opacity: 0.9, marginTop: '2px' }}>TxRef: {paymentSuccess}</p>
           </div>
-          <button 
+          <button
             onClick={() => setPaymentSuccess(null)}
             style={{
               background: 'none', border: 'none', color: 'white',

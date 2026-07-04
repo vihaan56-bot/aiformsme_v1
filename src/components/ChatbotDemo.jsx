@@ -3,6 +3,559 @@ import { Send, Settings, User, Bot, Trash2, Download, Table, CheckSquare, Globe,
 import { db, isFirebaseConfigured } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 
+const TEMPLATES = {
+  bakery: {
+    title: "Artisanal Breads & Delectable Pastries Baked Daily",
+    subtitle: "Welcome to our bakery, where every ingredient is selected with care, and every item is baked with love.",
+    about: "Established in 2016, we have been a cornerstone of the neighborhood. We utilize stone-ground local grains and long fermentation processes to create sourdoughs, croissants, and sweet treats that comfort the soul.",
+    products: [
+      { name: 'Sourdough Country Loaf', price: '₹150', desc: 'Naturally leavened crusty bread, baked in stone hearth.' },
+      { name: 'Almond Croissant', price: '₹120', desc: 'Twice-baked flaky croissant filled with sweet almond frangipane.' },
+      { name: 'Custom Birthday Cake', price: '₹1,200+', desc: 'Three layers of sponge, homemade buttercream, customized decorations.' }
+    ],
+    theme: "amber"
+  },
+  services: {
+    title: "Scale Your Operations. Dominate Your Market.",
+    subtitle: "Tailored business automation and coaching solutions designed to increase efficiency and double your sales.",
+    about: "We help small and medium enterprises optimize their workflows and integrate cutting-edge AI systems. Our certified architects design custom roadmaps that eliminate bottlenecks and reduce operating costs.",
+    products: [
+      { name: 'Operational Bottleneck Audit', price: '₹9,999', desc: 'Comprehensive review of your digital systems with a detailed roadmap.' },
+      { name: 'Custom AI Chatbot Set Up', price: '₹45,000', desc: 'End-to-end configuration and CRM integration for automated sales.' },
+      { name: 'Staff Prompting Workshop', price: '₹5,000/hr', desc: 'Interactive coaching sessions for teaching employees effective prompt work.' }
+    ],
+    theme: "breeze"
+  },
+  salon: {
+    title: "Relax. Rejuvenate. Rediscover Your Glow.",
+    subtitle: "Premium beauty treatments, therapeutic massages, and organic skincare services in a serene sanctuary.",
+    about: "Our boutique spa offers a peaceful escape from the hustle and bustle of daily life. Our licensed therapists use premium botanicals and advanced techniques to restore your natural balance and vitality.",
+    products: [
+      { name: 'Signature Organic Facial', price: '₹1,999', desc: 'Deep cleansing treatment using customized botanical extracts.' },
+      { name: 'Aromatherapy Swedish Massage', price: '₹2,500/hr', desc: 'Full-body relaxation therapy with lavender and chamomile essential oils.' },
+      { name: 'Designer Haircut & Blowout', price: '₹1,200', desc: 'Personal consultation, nourishing wash, bespoke cut and styling.' }
+    ],
+    theme: "rose"
+  },
+  fitness: {
+    title: "Unleash Your Strength. Achieve Your Apex.",
+    subtitle: "Premium training sessions, state-of-the-art weights, and a supportive community to power your fitness journey.",
+    about: "Apex Fitness is dedicated to building sustainable fitness habits. Our certified personal trainers and high-intensity group classes are designed to push you safely past your boundaries to achieve real results.",
+    products: [
+      { name: 'Standard Monthly Pass', price: '₹1,999/mo', desc: 'Unlimited access to gym facilities, locker rooms, and group warmups.' },
+      { name: 'Elite Personal Coaching', price: '₹1,500/hr', desc: 'One-on-one tailored program design and weekly nutritional audits.' },
+      { name: 'HIIT & Conditioning Class', price: '₹399/class', desc: '45-minute intense cardiovascular circuits led by group instructors.' }
+    ],
+    theme: "mint"
+  },
+  dental: {
+    title: "Gentle Care for Healthy, Radiant Smiles",
+    subtitle: "State-of-the-art dental treatments, preventive cleanings, and cosmetic procedures in a comforting environment.",
+    about: "We are committed to providing personalized dental care. Our experienced clinical staff utilizes digital x-rays, ultra-low radiation scanners, and advanced techniques to maintain your long-term oral health.",
+    products: [
+      { name: 'Routine Hygiene & Polishing', price: '₹999', desc: 'Complete oral hygiene clean, plaque removal, and fluoride shield application.' },
+      { name: 'Laser Teeth Whitening', price: '₹8,500', desc: 'In-office session utilizing LED accelerators to brighten teeth up to 8 shades.' },
+      { name: 'Cosmetic Veneer Consult', price: 'Free', desc: '1-on-1 digital scan and cosmetic analysis with our chief prosthodontist.' }
+    ],
+    theme: "aqua"
+  },
+  plumbing: {
+    title: "Fast, Reliable, & Certified Plumbing Experts",
+    subtitle: "Emergency pipe repairs, water heater replacements, and clog removals available 24/7.",
+    about: "For over 15 years, our licensed technicians have served local homes and business centers. We offer upfront pricing, guaranteed clean workspace recovery, and fully warranted parts installations.",
+    products: [
+      { name: 'Emergency Drain Clog Removal', price: '₹1,499', desc: 'Full inspection and hydro-jet clear of residential plumbing blockages.' },
+      { name: 'Standard Water Heater Service', price: '₹3,500', desc: 'Anode rod replacement, tank flushing, pressure safety testing, and calibration.' },
+      { name: 'Kitchen & Bath Leak Detection', price: '₹999', desc: 'Ultrasonic leak scanning for hidden pipe cracks and damp spot inspections.' }
+    ],
+    theme: "breeze"
+  },
+  petcare: {
+    title: "Premium Grooming & Boarding for Happy Pets",
+    subtitle: "Professional coat trims, soothing baths, and safe cage-free boarding for dogs and cats.",
+    about: "Our pet salon is staffed by certified groomers and passionate animal behaviorists. We design low-stress sessions tailored to your pet's age, coat condition, and energy levels.",
+    products: [
+      { name: 'Full Grooming & Spa Package', price: '₹1,200', desc: 'Shampoo wash, blow dry, claw trim, ear clean, and custom scissor trim.' },
+      { name: 'Overnight Kennel-Free Boarding', price: '₹800/night', desc: 'Climate-controlled sleeping space, 3 daily walks, and live web-camera monitoring.' },
+      { name: 'Soothing Medicated Oatmeal Bath', price: '₹400', desc: 'Specialized sensitive-skin treatment to alleviate itching and shedding.' }
+    ],
+    theme: "peach"
+  },
+  realestate: {
+    title: "Find Your Perfect Home in Premium Locations",
+    subtitle: "Exclusive listings, virtual walkthroughs, and expert brokerage consultation for local properties.",
+    about: "We streamline the house hunting and selling process. Our property brokers combine market analysis and neighborhood profiles to help you secure high-value residences and investment portfolios.",
+    products: [
+      { name: 'Comprehensive Buying Consult', price: 'Free', desc: 'Market budget modeling, loan prep review, and custom listings search setup.' },
+      { name: 'Professional Property Listing', price: '₹4,999', desc: 'High-definition HDR photography, drone site shots, and digital portal publishing.' },
+      { name: 'Legal Title & Contract Review', price: '₹9,999', desc: 'Full legal title chain checking and contract analysis for secure transactions.' }
+    ],
+    theme: "royalgold"
+  },
+  boutique: {
+    title: "Curated Designer Apparels & Chic Stylings",
+    subtitle: "Explore our collection of handcrafted fabrics, modern silhouettes, and custom accessories.",
+    about: "We celebrate individual style through limited-edition garments and slow-fashion principles. Our items are locally designed using sustainable silks, linens, and organic cotton weaves.",
+    products: [
+      { name: 'Hand-Tailored Silk Wrap Dress', price: '₹4,500', desc: '100% pure mulberry silk dress, adjustable waist, organic dye colors.' },
+      { name: 'Linen Summer Utility Jacket', price: '₹2,800', desc: 'Breathable structured linen jacket with deep pockets and tortoise buttons.' },
+      { name: '1-on-1 Personal Styling Consultation', price: '₹1,500/hr', desc: 'Bespoke fit analysis, color palette advice, and wardrobe setup.' }
+    ],
+    theme: "rose"
+  },
+  bookstore: {
+    title: "Discover Stories, Rare Editions, & Cozy Brews",
+    subtitle: "A handpicked collection of literature, comfortable reading alcoves, and artisanal coffee.",
+    about: "We are an independent bookstore dedicated to fostering a love for reading. From modern fiction to antique paperbacks, we curating bookshelves that inspire curiosities and cozy conversations.",
+    products: [
+      { name: 'Signed First-Edition Novel', price: '₹950', desc: 'Special hardback release signed by featured author, includes custom bookmark.' },
+      { name: 'Artisanal Bookworm Brew Bundle', price: '₹350', desc: 'Large single-origin French press coffee paired with a freshly baked muffin.' },
+      { name: 'Monthly Book Club Membership', price: '₹600/mo', desc: 'Get 1 selected book, access to weekly discussions, and free cafe drinks.' }
+    ],
+    theme: "coffee"
+  },
+  law: {
+    title: "Bespoke Legal Counsel with Integrity",
+    subtitle: "Corporate contracts, intellectual property protection, and real estate litigation experts.",
+    about: "Our attorneys deliver results-driven advocacy for startups, families, and growing enterprises. We prioritize transparent communications, thorough document audits, and sound litigation planning.",
+    products: [
+      { name: 'Initial Case Assessment Hour', price: '₹5,000', desc: 'Document review, liability mapping, and legal strategy formulation.' },
+      { name: 'NDAs & Founder Agreements', price: '₹15,000', desc: 'Tailored corporate agreements drafted to protect assets and IP rights.' },
+      { name: 'Trademark Search & Filing Package', price: '₹12,500', desc: 'Exhaustive registration searches and application submissions.' }
+    ],
+    theme: "platinum"
+  },
+  pharmacy: {
+    title: "Your Trusted Partner in Health & Wellness",
+    subtitle: "Same-day prescription deliveries, digital health checks, and herbal remedies.",
+    about: "We are a community-focused pharmacy committed to your family's health. We offer accurate dispensing, free drug interaction audits, and personal wellness coaching.",
+    products: [
+      { name: 'Home-Care Wellness Kit', price: '₹1,250', desc: 'Digital thermometer, pulse oximeter, immune supplements, and sanitizer spray.' },
+      { name: 'Personal Medication Plan Review', price: '₹500', desc: 'Review of prescription interactions, schedule optimizing, and pill organizing.' },
+      { name: 'Organic Ayurvedic Stress Supps', price: '₹850', desc: '60 capsules of pure ashwagandha and Brahmi extracts for cortisol regulation.' }
+    ],
+    theme: "mint"
+  },
+  autorepair: {
+    title: "Expert Auto Repairs & Precision Tuning",
+    subtitle: "Engine diagnostics, brake replacements, and scheduled maintenance for all vehicle models.",
+    about: "Our ASE-certified mechanics use modern diagnostic equipment to locate vehicle faults instantly. We provide transparent estimates, original manufacturer parts, and reliable turnarounds.",
+    products: [
+      { name: 'Precision Brake Pad Replacement', price: '₹3,200', desc: 'Installation of ceramic pads, rotor inspection, and fluid topping.' },
+      { name: 'Full Engine OBD Diagnostics', price: '₹999', desc: 'Electronic sensor check, trouble code reading, and emission status mapping.' },
+      { name: 'Annual Synthetic Oil Change Tune', price: '₹2,499', desc: '5L premium synthetic oil swap, new filter, and 25-point check.' }
+    ],
+    theme: "charcoal"
+  },
+  photography: {
+    title: "Capturing Life's Most Beautiful Moments",
+    subtitle: "High-end portraiture, commercial catalog shoots, and wedding documentary photography.",
+    about: "We believe every photo should tell a story. Using natural light, professional styling, and modern editing workflows, we deliver print-ready digital memories that last a lifetime.",
+    products: [
+      { name: 'Outdoor Portrait Session', price: '₹7,500', desc: '90-minute session, 2 outfits, 15 high-end retouched digital pictures.' },
+      { name: 'Product Catalog Studio Shoot', price: '₹12,000', desc: 'White-background tabletop images, professional lighting setup, 30 items.' },
+      { name: 'Full Wedding Coverage Package', price: '₹45,000', desc: '6 hours coverage, secondary shooter, online gallery, and premium photobook.' }
+    ],
+    theme: "midnight"
+  },
+  grocery: {
+    title: "Farm-Fresh, Organic, & Sustainable Groceries",
+    subtitle: "Direct-from-farm vegetables, bulk grains, and eco-friendly home products delivered to your door.",
+    about: "We partner with local organic farming co-ops to bring pesticide-free foods to your table. We pack all deliveries in zero-plastic biodegradable paper crates.",
+    products: [
+      { name: 'Weekly Organic Veggie Box', price: '₹650', desc: '5kg of seasonal farm-picked greens, root vegetables, and fresh herbs.' },
+      { name: 'Cold-Pressed Mustard Oil (1L)', price: '₹280', desc: 'Traditionally extracted yellow mustard seed oil, high smoke point.' },
+      { name: 'Raw Unfiltered Forest Honey (500g)', price: '₹399', desc: 'Single-source wild honey, retaining beneficial pollens and enzymes.' }
+    ],
+    theme: "forest"
+  },
+  software: {
+    title: "Building Scalable Custom Software Solutions",
+    subtitle: "Cloud integrations, mobile applications, and high-performance business dashboard designs.",
+    about: "We are an agile software development agency helping businesses scale. We turn complex requirements into clean codebases utilizing React, Node.js, and Amazon AWS cloud architectures.",
+    products: [
+      { name: 'MVP Concept Discovery Workshop', price: '₹18,000', desc: 'Figma mockups, API structure mapping, and architecture roadmap.' },
+      { name: 'Managed Cloud Migrating Plan', price: '₹75,000', desc: 'Database migration to secure cloud hosting with zero downtime.' },
+      { name: 'Dedicated React/Node Weekly Dev', price: '₹35,000/week', desc: '40 hours of expert engineering resources focused on your backlog.' }
+    ],
+    theme: "violet"
+  },
+  catering: {
+    title: "Gourmet Catering for Unforgettable Events",
+    subtitle: "Custom menus, chef-led prep, and professional table service for weddings and corporate galas.",
+    about: "We create culinary experiences tailored to your celebration. From finger-food buffets to 5-course plated dinners, we source farm-fresh seasonal ingredients to create menu highlights guests will love.",
+    products: [
+      { name: 'Premium High-Tea Party Menu', price: '₹450/guest', desc: 'Savory tarts, mini-sliders, pastries, and premium tea/coffee selection.' },
+      { name: 'Plated 3-Course Wedding Feast', price: '₹1,200/guest', desc: 'Artisanal starters, main choices, customized desserts, bread service.' },
+      { name: 'Gourmet Grazing Board Setup', price: '₹8,500', desc: 'Curated cheese selection, charcuterie, dry fruits, dips, serves 25.' }
+    ],
+    theme: "amber"
+  },
+  cleaning: {
+    title: "Eco-Friendly Cleaning for Homes & Offices",
+    subtitle: "Deep sanitization, window washing, and upholstery care using non-toxic products.",
+    about: "We keep your spaces spotless and allergen-free. Our bonded cleaning staff uses HEPA-filter vacuums and certified biodegradable disinfectants to maintain a clean environment.",
+    products: [
+      { name: 'Standard 2BHK Deep Cleaning', price: '₹2,999', desc: 'Kitchen degreasing, bathroom descaling, balcony wash, and floor sanitizing.' },
+      { name: 'Eco Carpet Stain Sanitizing', price: '₹1,200', desc: 'Steam cleaning, allergen extraction, and natural citrus deodorizing.' },
+      { name: 'Corporate Office Clean (Monthly)', price: '₹15,000/mo', desc: 'Bi-weekly general sweeps, trash sorting, desk clean, and window wash.' }
+    ],
+    theme: "skyblue"
+  },
+  marketing: {
+    title: "Data-Driven Marketing to Scale Online Sales",
+    subtitle: "Pay-per-click advertising, high-conversion SEO audits, and content creation campaigns.",
+    about: "We grow brands through measurable performance marketing. We combine creative copy with analytics and social ad setups to drive qualified buyers directly to your product checkout page.",
+    products: [
+      { name: 'Full Brand SEO Keyword Audit', price: '₹8,500', desc: 'Competitor backlink reports, site loading speed audits, and keyword lists.' },
+      { name: 'Facebook & Google Ad Setup', price: '₹25,000', desc: 'Targeting setup, tracking pixel configs, copywriting, and 3 ad creatives.' },
+      { name: 'Monthly Social Media Calendar', price: '₹15,000/mo', desc: '12 high-impact graphics and custom caption copy tailored for your audience.' }
+    ],
+    theme: "cyber"
+  },
+  tutoring: {
+    title: "Unlock Academic Excellence & Tech Certs",
+    subtitle: "1-on-1 math tutoring, science lab prep, and AP class coaching from top-tier mentors.",
+    about: "We match students with dedicated instructors to rebuild confidence. Our personalized study planners and test-taking simulators help students secure high grades and college admissions.",
+    products: [
+      { name: '1-on-1 AP Physics Tutoring Hour', price: '₹1,500/hr', desc: 'Individual problem-solving breakdown, conceptual check, and notes.' },
+      { name: '10-Session SAT Prep Bootcamp', price: '₹12,000', desc: 'Complete review of exam strategies, 3 mock tests, and error feedback.' },
+      { name: 'Intro to Python Coding Course', price: '₹6,000', desc: '8 modules of video tutorials, weekly assignments, and certified grader reviews.' }
+    ],
+    theme: "lavender"
+  },
+  florist: {
+    title: "Artisanal Floral Designs & Elegant Bouquets",
+    subtitle: "Freshly cut roses, customized event backdrops, and monthly home flower subscriptions.",
+    about: "We believe flowers speak. Our florists compose custom arrangements for birthdays, anniversaries, and corporate lobbies using fresh-cut stems sourced daily.",
+    products: [
+      { name: 'Classic Red Rose Hand Bouquet', price: '₹1,200', desc: '12 premium long-stem roses wrapped with seasonal foliage and silk ribbon.' },
+      { name: 'Signature Ceramic Table Centerpiece', price: '₹2,500', desc: 'Low-profile elegant mix of lilies, carnations, and eucalyptus branches.' },
+      { name: 'Weekly Fresh Floral Delivery', price: '₹3,000/mo', desc: 'Fresh seasonal bouquet delivered in water-gel packaging every Monday.' }
+    ],
+    theme: "rose"
+  },
+  construction: {
+    title: "Strong Roofs & Custom Home Construction",
+    subtitle: "Premium shingle roofing repairs, house extensions, and outdoor deck installations.",
+    about: "Our certified engineers and carpenters build structurally sound, weather-resistant structures. We offer guaranteed material sourcing, site safety clearances, and structural warranties.",
+    products: [
+      { name: 'Standard Roof Leak Inspection', price: '₹1,500', desc: 'Complete scanning of shingles, flashing seams, gutters, and attic insulation.' },
+      { name: 'Custom Wooden Deck Installation', price: '₹85,000+', desc: 'High-grade treated pine deck, safety railings, steps, 12x12ft dimensions.' },
+      { name: 'Concrete Driveway Resurfacing', price: '₹45,000', desc: 'Pressure wash, crack repair, epoxy level coat, and weather sealing.' }
+    ],
+    theme: "bronze"
+  },
+  music: {
+    title: "Learn Instruments, Vocals, & Music Theory",
+    subtitle: "Bespoke piano courses, guitar lessons, and vocal coaching sessions for ages 6 to adult.",
+    about: "Our instructors are conservatory-trained performers. We make music learning fun and rewarding, helping beginners learn basic cords and advanced students master complex concertos.",
+    products: [
+      { name: 'Individual Piano Class (45 mins)', price: '₹1,200', desc: 'One-on-one session covering classical technique, sight reading, and expression.' },
+      { name: 'Acoustic Guitar Starter Course', price: '₹800/class', desc: 'Weekly group class focusing on chord transitions, tuning, and strumming.' },
+      { name: 'Vocal Pitch & Breathing Lesson', price: '₹1,500', desc: 'Private diaphragmatic breathing session, range test, and vocal warmups.' }
+    ],
+    theme: "deeppurple"
+  },
+  jewelry: {
+    title: "Timeless Fine Jewelry & Bespoke Gold Craft",
+    subtitle: "Handcrafted 18k gold bands, conflict-free diamond rings, and professional laser repairs.",
+    about: "We manufacture heirloom quality jewelry with passion. Our master craftsmen combine traditional metalsmithing with CAD-based jewelry design to create one-of-a-kind treasures.",
+    products: [
+      { name: 'Classic Solitaire Engagement Ring', price: '₹75,000+', desc: '0.5 carat round-cut lab diamond set on a polished 18k yellow gold band.' },
+      { name: 'Bespoke Birthstone Gold Pendant', price: '₹18,500', desc: 'Customizable gold disk set with your choice of natural gemstone.' },
+      { name: 'Professional Jewelry Laser Clean', price: '₹500', desc: 'Ultrasonic dirt extraction, prong checking, and high-shine wheel polish.' }
+    ],
+    theme: "royalgold"
+  },
+  optician: {
+    title: "Precision Vision Tests & Designer Eyewear",
+    subtitle: "Comprehensive computerized eye tests, blue-light blocking lenses, and trendy frames.",
+    about: "Protect your eyesight with our advanced optometric checks. We offer eye exams, custom progressive lens fittings, and a wide collection of designer and budget frames.",
+    products: [
+      { name: 'Computerized Refraction Eye Test', price: 'Free', desc: 'Full prescription analysis, glaucoma screening, and binocular balance check.' },
+      { name: 'Blue-Light Protect Glasses Bundle', price: '₹2,499', desc: 'Sleek polycarbonate frame fitted with anti-glare screen protection lenses.' },
+      { name: 'Premium Hydrogel Contact Lenses', price: '₹1,800/box', desc: 'Daily disposable contacts, high oxygen transmission, 30 lenses.' }
+    ],
+    theme: "breeze"
+  },
+  coworking: {
+    title: "Flexible Desks & High-Tech Meeting Rooms",
+    subtitle: "Gigabit internet, ergonomic workspaces, and organic coffee for creators and teams.",
+    about: "Scale your startup in our workspace. We offer flexible memberships, acoustic phone booths, spacious conference halls, and a professional community of tech founders.",
+    products: [
+      { name: 'Flexi Desk Day Pass Package', price: '₹499/day', desc: 'Ergonomic seating, gigabit WiFi, credits for printer and cafeteria drinks.' },
+      { name: 'Acoustic Meeting Room Hour', price: '₹1,200/hr', desc: 'Soundproof room for 6 guests, equipped with 4k TV and camera system.' },
+      { name: 'Dedicated Desk Monthly Space', price: '₹9,999/mo', desc: 'Reserved workspace, lockable cabinet, 24/7 access card, and mail address.' }
+    ],
+    theme: "breeze"
+  },
+  travel: {
+    title: "Curated International Tours & Custom Flights",
+    subtitle: "Unlock handpicked resort stays, local cultural guides, and custom travel itineraries.",
+    about: "We make traveling stress-free. Our advisors design custom vacations, manage visa documentation, and organize guided excursions to help you explore the globe safely.",
+    products: [
+      { name: '4-Night Bali Tropical Tour Plan', price: '₹24,999', desc: 'Private beach villa, daily breakfast, airport transfers, and Ubud guide.' },
+      { name: 'Custom Honeymoon Design Consult', price: '₹1,500', desc: 'Exotic destination scoping, flight schedules, and resort options.' },
+      { name: 'Premium Travel Insurance Coverage', price: '₹1,200', desc: 'Full medical coverage, lost baggage compensation, trip delay support.' }
+    ],
+    theme: "tropical"
+  },
+  laundry: {
+    title: "Eco-Friendly Wet Clean & Steam Ironing",
+    subtitle: "Same-day clothing wash, premium stain removal, and door-to-door pickup services.",
+    about: "Keep your wardrobe looking fresh. We utilize non-toxic biodegradable detergents and high-pressure steam tables to clean and iron your premium wools, silks, and cottons.",
+    products: [
+      { name: 'Premium Suit Dry Cleaning Swap', price: '₹450', desc: 'Two-piece suit wash, specialized stain extraction, and hanger packaging.' },
+      { name: 'Wash & Fold Laundry Bag (5kg)', price: '₹350', desc: 'General garments washed, tumble dried, sorted, and packed in paper bag.' },
+      { name: 'Silk Saree Delicate Steam Iron', price: '₹150', desc: 'Low-heat safe ironing to preserve delicate weave luster and borders.' }
+    ],
+    theme: "skyblue"
+  },
+  barber: {
+    title: "Sharp Fades, Hot Shaves, & Classic Grooming",
+    subtitle: "Precision cuts, beard line trims, and hot towel facial massage in a vintage lounge.",
+    about: "Get the haircut you deserve. Our experienced barbers specialize in classic pompadours, skin fades, hair coloring, and traditional straight-razor shave rituals.",
+    products: [
+      { name: 'Signature Haircut & Style', price: '₹500', desc: 'Personal consultation, shampoo wash, bespoke scissor cut, and pomade styling.' },
+      { name: 'Beard Trim & Hot Towel Shave', price: '₹350', desc: 'Beard shaping, moisturizing oil application, straight razor neck cleanup.' },
+      { name: 'Premium Charcoal Face Detox', price: '₹600', desc: 'Deep-pore peel mask, vapor steam, cold wash, and facial massage.' }
+    ],
+    theme: "charcoal"
+  },
+  architecture: {
+    title: "Inspiring Spaces & Modern Building Design",
+    subtitle: "CAD blueprints, interior space planning, and 3D architectural render services.",
+    about: "We design structures that harmonize with their surroundings. Our architects combine spatial flow, structural calculations, and green building materials to design beautiful homes.",
+    products: [
+      { name: 'Residential Floor Plan Consult', price: '₹15,000', desc: 'Initial layout sketch, zoning analysis, and structural consultation.' },
+      { name: 'High-End 3D Interior Rendering', price: '₹8,500/room', desc: 'Photorealistic digital visualization of colors, textures, and lighting.' },
+      { name: 'Full Building Blueprint Set', price: '₹1,50,000+', desc: 'Civil drawings, electrical mapping, plumbing design, and permit filing.' }
+    ],
+    theme: "steel"
+  },
+  veterinary: {
+    title: "Compassionate Veterinary Care for Family Pets",
+    subtitle: "Computerized pet wellness checks, vaccinations, and emergency dental surgery.",
+    about: "We keep your pets healthy and happy. Our clinic is equipped with in-house blood labs, digital x-ray units, and an experienced veterinary surgery team for optimal pet care.",
+    products: [
+      { name: 'Annual Pet Health Examination', price: '₹800', desc: 'Check of ears, teeth, heart rate, weight, and general skin wellness.' },
+      { name: 'Puppy Vaccination Schedule Pack', price: '₹2,500', desc: 'Core vaccines including Rabies, DHPP, and booster schedule cards.' },
+      { name: 'Dog Dental Scale & Polish', price: '₹4,500', desc: 'Tarter removal under safe anesthesia, polishing, and gum cleaning.' }
+    ],
+    theme: "pistachio"
+  },
+  handyman: {
+    title: "Professional Repairs & Custom Installs",
+    subtitle: "TV wall mounting, cabinet repairs, lock replacements, and fixture fittings.",
+    about: "No task is too small. Our background-checked craftsmen arrive fully equipped to fix your creaky doors, install shelves, or replace broken kitchen taps quickly.",
+    products: [
+      { name: 'Standard TV Wall Mount Install', price: '₹800', desc: 'Secure mounting on concrete/drywall, cable hide setup, level adjustment.' },
+      { name: 'Door Lock & Handle Replacement', price: '₹600', desc: 'Installation of secure brass deadbolt and lever handle set.' },
+      { name: 'Half-Day Handyman Booking (4h)', price: '₹2,500', desc: 'Hire an expert craftsman to fix your list of general home repairs.' }
+    ],
+    theme: "copper"
+  },
+  webdesign: {
+    title: "Stunning Web Design for Modern Brands",
+    subtitle: "Figma UI/UX layouts, high-conversion landing pages, and responsive Webflow sites.",
+    about: "We build websites that grow businesses. We focus on modern typography, intuitive navigation structures, rapid loading optimization, and responsive design systems.",
+    products: [
+      { name: '1-Page Landing Page Design', price: '₹15,000', desc: 'High-converting custom layout with responsive mobile optimization.' },
+      { name: 'Complete UI/UX Figma Design', price: '₹35,000', desc: 'Interactive prototype, components library, style guide, up to 6 pages.' },
+      { name: 'SEO & Speed Optimization Pack', price: '₹8,500', desc: 'Web page compression, asset delivery setup, schema data integrations.' }
+    ],
+    theme: "cyberneon"
+  },
+  accounting: {
+    title: "Accurate Tax & Business Accounting",
+    subtitle: "GST filing, annual company accounts audit, and outsourced payroll solutions.",
+    about: "We keep your financial books balanced and compliant. Our certified accountants manage ledger reconciliations, payroll records, and tax returns so you can focus on growth.",
+    products: [
+      { name: 'GST Filing & Compliance (Monthly)', price: '₹2,499/mo', desc: 'Invoice reconciliation, tax calculations, and GSTR-1/3B filing.' },
+      { name: 'Annual Income Tax Return Pack', price: '₹4,999', desc: 'Profit & Loss analysis, tax deduction optimization, and filing.' },
+      { name: 'Company Payroll Management (50 staff)', price: '₹9,999/mo', desc: 'Payslip generation, tax deductions, and direct bank transfers.' }
+    ],
+    theme: "bordeaux"
+  },
+  nails: {
+    title: "Luxury Manicures & Creative Nail Art",
+    subtitle: "Gel extensions, paraffin wax hand spa, and custom nail designs in a chic salon.",
+    about: "Treat your hands to premium care. Our nail tech professionals use certified organic gels, non-toxic polishes, and sterile instruments to design custom nail styles.",
+    products: [
+      { name: 'Signature Gel Manicure', price: '₹999', desc: 'Nail shaping, cuticle treatment, organic gel polish coating, LED dry.' },
+      { name: 'Acrylic Nail Extensions', price: '₹2,500', desc: 'Length extension, hand-sculpted acrylics, color polish application.' },
+      { name: 'Paraffin Wax Hydrating Hand Spa', price: '₹800', desc: 'Warm wax wrap, skin moisturizing treatment, and hand massage.' }
+    ],
+    theme: "bubblegum"
+  },
+  security: {
+    title: "Certified Security & CCTV Camera Install",
+    subtitle: "IP camera setups, intercom wiring, and biometric access card integrations.",
+    about: "Protect what matters. We install smart security networks equipped with night vision, motion alert smartphone syncs, and secure cloud storage vaults.",
+    products: [
+      { name: '4-Camera HD CCTV System Install', price: '₹18,500', desc: '4 dome cameras (1080p), 1TB DVR box, installation cables, mobile app setup.' },
+      { name: 'Biometric Access Control Door Lock', price: '₹7,500', desc: 'Fingerprint and RFID card reader lock installed on office entry.' },
+      { name: 'Annual Security System Service', price: '₹2,500', desc: 'Lens cleaning, power supply checking, connection test, software updates.' }
+    ],
+    theme: "midnight"
+  },
+  electrician: {
+    title: "Safe, Certified Electrician & Wiring Repairs",
+    subtitle: "Circuit breaker upgrades, smart home switches, and residential rewiring.",
+    about: "We keep your electricity flowing safely. Our licensed wiremen diagnose electric shorts, replace burned sockets, and install modern lighting fixtures cleanly.",
+    products: [
+      { name: 'Circuit Breaker Box Diagnostics', price: '₹1,200', desc: 'Overload safety tests, fuse check, and grounding line calibration.' },
+      { name: 'Smart Switch Installation Package', price: '₹2,500', desc: 'Upgrade 5 legacy switches to WiFi-controlled smart touch models.' },
+      { name: 'Whole House Wiring Safety Check', price: '₹1,500', desc: 'Thermal scanner check of sockets, insulation testing, safety certification.' }
+    ],
+    theme: "solar"
+  },
+  carwash: {
+    title: "Premium Foam Car Wash & Paint Detailing",
+    subtitle: "Interior steam vacuum, high-gloss ceramic coatings, and alloy wheel polish.",
+    about: "Restore that new-car shine. We use paint-safe micro-fiber pads, ph-neutral shampoo suds, and high-pressure blowers to detail your car without scratches.",
+    products: [
+      { name: 'Signature Foam Wash & Vacuum', price: '₹799', desc: 'Exterior snow foam spray, wheel wash, tyre shine, dashboard clean, vacuum.' },
+      { name: 'Interior Deep Steam Sanitization', price: '₹2,499', desc: 'Upholstery stain extraction, roof cleaning, AC vent steam sanitizing.' },
+      { name: '9H Hardness Ceramic Paint Coating', price: '₹18,000', desc: 'Dual-layer ceramic shield, swirl removal compound polish, 3-year warranty.' }
+    ],
+    theme: "skyblue"
+  },
+  pestcontrol: {
+    title: "Effective, Non-Toxic Pest Control Solutions",
+    subtitle: "Termite barriers, cockroach gel treatments, and rodent proofing guarantees.",
+    about: "Keep your home healthy and pest-free. We use WHO-approved odorless gels and botanical sprays that are safe for kids and house pets.",
+    products: [
+      { name: '3-BHK Cockroach Gel Treatment', price: '₹1,800', desc: 'Advanced bait gel spots in kitchen and bath, herbal spray protection.' },
+      { name: 'Anti-Termite Soil Injection Barrier', price: '₹12,500', desc: 'Chemical soil barrier around structure walls, 5-year warranty card.' },
+      { name: 'Rodent Proofing & Baiting Service', price: '₹2,200', desc: 'Sealing entry holes, setting pet-safe bait stations, checkup visit.' }
+    ],
+    theme: "olive"
+  },
+  bicycle: {
+    title: "Premium Bicycle Shop & Gear Tuning",
+    subtitle: "Mountain bike gear adjustments, disc brake bleeding, and custom frame builds.",
+    about: "Keep your wheels spinning smoothly. Our master mechanics tune road, gravel, and mountain bikes to keep your shifting fast and braking crisp.",
+    products: [
+      { name: 'Comprehensive Drivetrain Service', price: '₹1,500', desc: 'Chain and cassette degreasing, gear tuning, new gear cables.' },
+      { name: 'Hydraulic Disc Brake Bleeding', price: '₹800/wheel', desc: 'Old fluid flush, mineral oil refill, pad check, caliper centering.' },
+      { name: 'Custom Road Bike Wheel Truing', price: '₹400', desc: 'Spoke tension adjustment on truing stand to remove wheel wobbles.' }
+    ],
+    theme: "lime"
+  },
+  yoga: {
+    title: "Mindful Vinyasa, Yin, & Meditation Classes",
+    subtitle: "Daily group yoga classes, breathwork tutorials, and deep meditation retreats.",
+    about: "Restore balance to your body and mind. Our certified instructors guide practitioners of all levels through slow, breath-aligned flows and relaxing poses.",
+    products: [
+      { name: '10-Class Group Yoga Pass', price: '₹3,500', desc: 'Valid for all daily morning Vinyasa and evening Yin yoga classes.' },
+      { name: 'Private Sound Healing Session', price: '₹2,500', desc: '90 minutes of Tibetan singing bowls and chakra balancing breathwork.' },
+      { name: 'Weekend Mindfulness Retreat Pass', price: '₹8,500', desc: 'Includes organic lunches, 4 yoga classes, and guided outdoor meditation.' }
+    ],
+    theme: "zen"
+  },
+  language: {
+    title: "Learn Languages from Native Instructors",
+    subtitle: "Interactive French, German, and Spanish courses for business and travel.",
+    about: "Speak confidently from day one. Our conversational approach, online feedback tools, and weekly practice sessions help you learn vocabulary and pronunciation fast.",
+    products: [
+      { name: '12-Week A1 German Course Pack', price: '₹9,999', desc: '48 hours of instruction, textbook PDF, grammar worksheets, certified test.' },
+      { name: 'Private English Pronouncing Hour', price: '₹1,200/hr', desc: 'Focus on native accents, phonetics review, and presentation practice.' },
+      { name: 'Travel Spanish Survival Course', price: '₹3,500', desc: '8 sessions of basic phrases for ordering food, shopping, and directions.' }
+    ],
+    theme: "lavender"
+  },
+  events: {
+    title: "Flawless Event Planning & Creative Decors",
+    subtitle: "Custom theme weddings, corporate product launches, and birthday balloon setups.",
+    about: "We handle the logistics so you can enjoy your celebration. From vendor contracts and venue designs to schedule timing, we execute flawless events.",
+    products: [
+      { name: 'Complete Birthday Design Setup', price: '₹15,000', desc: 'Themed backdrop, organic balloon arch, cake table styling, lighting.' },
+      { name: 'Wedding Coordination Package', price: '₹85,000', desc: 'On-site coordinator for wedding day, vendor management, schedule monitoring.' },
+      { name: 'Corporate Launch Event Consult', price: '₹5,000', desc: 'Floor plan concepts, audiovisual setup plan, and budget spreadsheet.' }
+    ],
+    theme: "sunset"
+  },
+  artgallery: {
+    title: "Original Paintings & Fine Art Prints",
+    subtitle: "Explore abstract oils, watercolor landscapes, and custom framing options.",
+    about: "We connect art collectors with talented local and international creators. We host monthly exhibition openings and assist with curated corporate art setups.",
+    products: [
+      { name: 'Original Abstract Oil Painting', price: '₹28,000+', desc: 'Canvas stretched painting (3x3ft), signed, with authenticity certificate.' },
+      { name: 'Giclee Museum-Quality Art Print', price: '₹3,500', desc: 'High-resolution archival ink print on heavy acid-free textured paper.' },
+      { name: 'Custom Archival Wood Framing', price: '₹1,800', desc: 'Solid oak frame, acid-free backing mat, UV-filtering acrylic cover.' }
+    ],
+    theme: "charcoal"
+  },
+  dentrepair: {
+    title: "Paintless Dent Removal & Paint Refinishing",
+    subtitle: "Remove door dings, bumper scrapes, and paint scratches with factory-match coating.",
+    about: "Restore your car's bodywork without costly replacements. We utilize specialized dent pulling rods and computer-matched paint sprays to fix dings invisible.",
+    products: [
+      { name: 'Paintless Dent Repair (per panel)', price: '₹1,500', desc: 'Ping and hail dent massage from behind the panel, no paint required.' },
+      { name: 'Bumper Scrape Scatch Paint Repair', price: '₹3,500', desc: 'Sanding, primer application, base coat paint matching, and clear coat.' },
+      { name: 'Full Car Paint Polish & Wax', price: '₹4,500', desc: 'Swirl mark correction, high-gloss carnauba wax coating protection.' }
+    ],
+    theme: "steel"
+  },
+  tailor: {
+    title: "Bespoke Tailoring & Garment Alters",
+    subtitle: "Handcrafted suits, customized evening gowns, and precision clothing alterations.",
+    about: "Get the perfect fit. Our tailors measure, cut, and stitch premium fabrics to create custom patterns that match your body shape and movements.",
+    products: [
+      { name: 'Bespoke 2-Piece Suit Stitching', price: '₹15,000', desc: 'Custom jacket and trousers, 3 fitting sessions, excludes fabric cost.' },
+      { name: 'Trousers Waist & Hem Alteration', price: '₹350', desc: 'Adjusting leg length and tapering leg line for optimal fit.' },
+      { name: 'Evening Gown Fitting Alteration', price: '₹1,800', desc: 'Bust adjustment, strap shortening, zipper fix, and delicate hem lining.' }
+    ],
+    theme: "plum"
+  },
+  tattoo: {
+    title: "Safe, Creative Tattoo Art & Custom Ink",
+    subtitle: "Custom blackwork designs, watercolor tattoos, and cover-up experts.",
+    about: "Express yourself through safe body art. Our award-winning tattooists specialize in fine-line, realistic portraiture, and bold tribal blackwork in a sterile clinic.",
+    products: [
+      { name: 'Custom Tattoo Session Hour', price: '₹3,000/hr', desc: 'Private studio session, sterile disposable needles, organic dynamic inks.' },
+      { name: 'Fine-Line Minimalist Tattoo', price: '₹2,500', desc: 'Up to 2x2 inches, clean single-needle blackwork design on skin.' },
+      { name: 'Tattoo Cover-Up Consultation', price: 'Free', desc: 'Review of existing ink, custom redesign sketch options, and sizing.' }
+    ],
+    theme: "vampire"
+  },
+  gardening: {
+    title: "Lush Landscaping & Automatic Irrigation",
+    subtitle: "Lawn seeding, garden soil preparation, and drip watering systems.",
+    about: "Build your backyard sanctuary. We design stone paths, plant seasonal flower beds, install natural turf rolls, and build smart irrigation timers.",
+    products: [
+      { name: 'Custom Drip Irrigation Installation', price: '₹18,500', desc: 'Pipes, drip heads, pressure valves, smart WiFi timer control setup.' },
+      { name: 'Lawn Aerating & Overseeding', price: '₹4,999', desc: 'Soil aeration, organic compost spreading, premium Bermuda grass seeds.' },
+      { name: 'Garden Maintenance Visit (4h)', price: '₹2,000', desc: 'Pruning shrubs, weed removal, soil digging, and organic fertilizing.' }
+    ],
+    theme: "forest"
+  },
+  crossfit: {
+    title: "High-Intensity CrossFit & Strength Coaching",
+    subtitle: "Olympic lifting platforms, rowers, gymnastics rings, and certified coaches.",
+    about: "Build functional strength and endurance. Our group workouts (WODs) are designed to challenge you safely under constant coaching supervision.",
+    products: [
+      { name: 'Unlimited Monthly CrossFit Pass', price: '₹3,500/mo', desc: 'Access to all daily WOD classes, open gym hours, and track logs.' },
+      { name: 'Olympic Weightlifting Class', price: '₹600/class', desc: '60 minutes focusing on snatch and clean-and-jerk technical drills.' },
+      { name: 'Personal Strength Assessment (1h)', price: '₹1,500', desc: 'Mobility screening, 1RM strength testing, and custom workout routine plan.' }
+    ],
+    theme: "magma"
+  },
+  physio: {
+    title: "Physiotherapy & Sports Rehabilitation",
+    subtitle: "Dry needling, joint mobilization, and custom recovery exercise plans.",
+    about: "Recover from pain and injury. Our licensed physiotherapists diagnose your movement limits and design a targeted recovery plan to help you heal.",
+    products: [
+      { name: 'Initial Physiotherapy Assessment', price: '₹1,200', desc: 'Orthopedic tests, range of motion measure, and first rehab treatment.' },
+      { name: 'Sports Injury Therapy Session', price: '₹1,000', desc: 'Dry needling, muscle release massage, and home exercise setup.' },
+      { name: 'Kinesiology Taping Package', price: '₹400', desc: 'Application of elastic therapeutic tape to support weak muscles.' }
+    ],
+    theme: "aqua"
+  }
+};
+
 export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) {
   // Configuration State
   const [bizName, setBizName] = useState("Joe's Bakery");
@@ -42,46 +595,13 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
   // Update Template Content Defaults dynamically
   const handleTemplateChange = (tmpl) => {
     setWebTemplate(tmpl);
-    if (tmpl === 'bakery') {
-      setWebTitle("Artisanal Breads & Delectable Pastries Baked Daily");
-      setWebSubtitle("Welcome to our bakery, where every ingredient is selected with care, and every item is baked with love.");
-      setWebAbout("Established in 2016, we have been a cornerstone of the neighborhood. We utilize stone-ground local grains and long fermentation processes to create sourdoughs, croissants, and sweet treats that comfort the soul.");
-      setProductsList([
-        { name: 'Sourdough Country Loaf', price: '₹150', desc: 'Naturally leavened crusty bread, baked in stone hearth.' },
-        { name: 'Almond Croissant', price: '₹120', desc: 'Twice-baked flaky croissant filled with sweet almond frangipane.' },
-        { name: 'Custom Birthday Cake', price: '₹1,200+', desc: 'Three layers of sponge, homemade buttercream, customized decorations.' }
-      ]);
-      setWebTheme("amber");
-    } else if (tmpl === 'services') {
-      setWebTitle("Scale Your Operations. Dominate Your Market.");
-      setWebSubtitle("Tailored business automation and coaching solutions designed to increase efficiency and double your sales.");
-      setWebAbout("We help small and medium enterprises optimize their workflows and integrate cutting-edge AI systems. Our certified architects design custom roadmaps that eliminate bottlenecks and reduce operating costs.");
-      setProductsList([
-        { name: 'Operational Bottleneck Audit', price: '₹9,999', desc: 'Comprehensive review of your digital systems with a detailed roadmap.' },
-        { name: 'Custom AI Chatbot Set Up', price: '₹45,000', desc: 'End-to-end configuration and CRM integration for automated sales.' },
-        { name: 'Staff Prompting Workshop', price: '₹5,000/hr', desc: 'Interactive coaching sessions for teaching employees effective prompt work.' }
-      ]);
-      setWebTheme("breeze");
-    } else if (tmpl === 'salon') {
-      setWebTitle("Relax. Rejuvenate. Rediscover Your Glow.");
-      setWebSubtitle("Premium beauty treatments, therapeutic massages, and organic skincare services in a serene sanctuary.");
-      setWebAbout("Our boutique spa offers a peaceful escape from the hustle and bustle of daily life. Our licensed therapists use premium botanicals and advanced techniques to restore your natural balance and vitality.");
-      setProductsList([
-        { name: 'Signature Organic Facial', price: '₹1,999', desc: 'Deep cleansing treatment using customized botanical extracts.' },
-        { name: 'Aromatherapy Swedish Massage', price: '₹2,500/hr', desc: 'Full-body relaxation therapy with lavender and chamomile essential oils.' },
-        { name: 'Designer Haircut & Blowout', price: '₹1,200', desc: 'Personal consultation, nourishing wash, bespoke cut and styling.' }
-      ]);
-      setWebTheme("rose");
-    } else if (tmpl === 'fitness') {
-      setWebTitle("Unleash Your Strength. Achieve Your Apex.");
-      setWebSubtitle("Premium training sessions, state-of-the-art weights, and a supportive community to power your fitness journey.");
-      setWebAbout("Apex Fitness is dedicated to building sustainable fitness habits. Our certified personal trainers and high-intensity group classes are designed to push you safely past your boundaries to achieve real results.");
-      setProductsList([
-        { name: 'Standard Monthly Pass', price: '₹1,999/mo', desc: 'Unlimited access to gym facilities, locker rooms, and group warmups.' },
-        { name: 'Elite Personal Coaching', price: '₹1,500/hr', desc: 'One-on-one tailored program design and weekly nutritional audits.' },
-        { name: 'HIIT & Conditioning Class', price: '₹399/class', desc: '45-minute intense cardiovascular circuits led by group instructors.' }
-      ]);
-      setWebTheme("mint");
+    const data = TEMPLATES[tmpl];
+    if (data) {
+      setWebTitle(data.title);
+      setWebSubtitle(data.subtitle);
+      setWebAbout(data.about);
+      setProductsList(data.products);
+      setWebTheme(data.theme);
     }
   };
 
@@ -749,6 +1269,52 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
                 <option value="services">Professional Consulting</option>
                 <option value="salon">Spa & Beauty Salon</option>
                 <option value="fitness">Fitness Studio Layout</option>
+                <option value="dental">Dental & Smile Clinic</option>
+                <option value="plumbing">Plumbing & Pipe Repair</option>
+                <option value="petcare">Pet Grooming & Spa</option>
+                <option value="realestate">Real Estate Agency</option>
+                <option value="boutique">Boutique Fashion Store</option>
+                <option value="bookstore">Cozy Bookstore & Cafe</option>
+                <option value="law">Law Firm Advocacy</option>
+                <option value="pharmacy">Pharmacy & Wellness Hub</option>
+                <option value="autorepair">Auto Repair & Diagnostic</option>
+                <option value="photography">Professional Photo Studio</option>
+                <option value="grocery">Organic Grocery Delivery</option>
+                <option value="software">Software Dev Agency</option>
+                <option value="catering">Gourmet Events Catering</option>
+                <option value="cleaning">Eco Cleaning Services</option>
+                <option value="marketing">Digital Marketing Growth</option>
+                <option value="tutoring">Tutoring & Tech Academy</option>
+                <option value="florist">Flower Shop & Floral Design</option>
+                <option value="construction">Roofing & House Building</option>
+                <option value="music">Music School & Vocal coach</option>
+                <option value="jewelry">Bespoke Jewelry & Fine Gold</option>
+                <option value="optician">Optician Eyewear Clinic</option>
+                <option value="coworking">Co-working Space & desks</option>
+                <option value="travel">Travel Agency Tours</option>
+                <option value="laundry">Dry Cleaning & Laundry</option>
+                <option value="barber">Barber Lounge & Shave</option>
+                <option value="architecture">Architecture & Space Design</option>
+                <option value="veterinary">Veterinary Pet Care</option>
+                <option value="handyman">Handyman Repairs & Installs</option>
+                <option value="webdesign">Modern Web Design Studio</option>
+                <option value="accounting">Accounting & GST Tax Advisory</option>
+                <option value="nails">Nail Salon & Gel Art</option>
+                <option value="security">Security Guard & CCTV</option>
+                <option value="electrician">Electrician Wiring Repair</option>
+                <option value="carwash">Foam Car Wash & Detailing</option>
+                <option value="pestcontrol">Safe Eco Pest Control</option>
+                <option value="bicycle">Bicycle Shop & Gear Tuning</option>
+                <option value="yoga">Yoga Vinyasa Studio</option>
+                <option value="language">Language School Lessons</option>
+                <option value="events">Event Organizer & Design</option>
+                <option value="artgallery">Fine Art Painting Gallery</option>
+                <option value="dentrepair">Bumper Paint & Dent Repair</option>
+                <option value="tailor">Bespoke Tailor Stitching</option>
+                <option value="tattoo">Creative Tattoo Ink Studio</option>
+                <option value="gardening">Landscaping & Garden Trim</option>
+                <option value="crossfit">CrossFit Box & Lifting Gym</option>
+                <option value="physio">Physiotherapy & Rehab Care</option>
               </select>
             </div>
           </div>
