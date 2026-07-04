@@ -65,9 +65,17 @@ export default function App() {
     setTrainingPassed(true);
   };
 
-  // Parse path to route
-  const getRouteFromPath = (path) => {
-    const cleanPath = path.replace(/^\//, '').trim();
+  // Parse path and query parameters to resolve current tab or website slug
+  const getRouteFromPath = () => {
+    // 1. Check for `page` query parameter (helpful for forwarded domains with masking)
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get('page');
+    if (pageParam && pageParam.trim()) {
+      return { tab: null, slug: pageParam.trim() };
+    }
+
+    // 2. Fall back to pathname check
+    const cleanPath = window.location.pathname.replace(/^\//, '').trim();
     if (!cleanPath) return { tab: 'home', slug: null };
     
     const validTabs = ['home', 'demos', 'pricing', 'dashboard', 'wizard'];
@@ -79,7 +87,7 @@ export default function App() {
 
   useEffect(() => {
     // Initial path resolution
-    const route = getRouteFromPath(window.location.pathname);
+    const route = getRouteFromPath();
     if (route.slug) {
       setCurrentSlug(route.slug);
       setCurrentTab(null);
@@ -89,7 +97,7 @@ export default function App() {
     }
 
     const handlePopState = () => {
-      const r = getRouteFromPath(window.location.pathname);
+      const r = getRouteFromPath();
       if (r.slug) {
         setCurrentSlug(r.slug);
         setCurrentTab(null);
