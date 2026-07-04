@@ -655,7 +655,10 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       console.error(err);
     }
 
-    setGeneratedUrl(`${window.location.origin}/${siteData.slug}`);
+    const baseOrigin = window.location.origin.includes('onrender.com')
+      ? 'https://aiformsme.co.in'
+      : window.location.origin;
+    setGeneratedUrl(`${baseOrigin}/${siteData.slug}`);
     setWebLoading(false);
     setShowSuccessModal(true);
   };
