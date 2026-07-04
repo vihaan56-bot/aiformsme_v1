@@ -295,7 +295,7 @@ export default function App() {
 
         {currentTab === 'pricing' && (
           <section className="section-padding">
-            <PricingCalculator />
+            <PricingCalculator onDeploy={() => handleChooseTrial('chatbot')} />
           </section>
         )}
 

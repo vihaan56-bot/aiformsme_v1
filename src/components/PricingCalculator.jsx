@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BadgeDollarSign, HelpCircle, Check, Sparkles } from 'lucide-react';
 
-export default function PricingCalculator() {
+export default function PricingCalculator({ onDeploy }) {
   // Calculator metrics
   const [conversations, setConversations] = useState(1000);
   const [callMinutes, setCallMinutes] = useState(250);
@@ -210,7 +210,11 @@ export default function PricingCalculator() {
               <Check size={14} style={{ color: '#22c55e' }} />
               Includes call-forwarding voice agent
             </div>
-            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+            <button 
+              className="btn-primary" 
+              onClick={onDeploy} 
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
               Select Starter Bundle & Deploy <Sparkles size={16} />
             </button>
           </div>
