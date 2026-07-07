@@ -44,14 +44,14 @@ export default function PricingCalculator({ onDeploy }) {
         
         {/* Sliders Form Panel */}
         <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
           {/* Chat slider */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '600' }}>
-              <span style={{ color: 'hsl(var(--text-secondary))' }}>Monthly Chatbot Conversations</span>
+              <label htmlFor="chat-range" style={{ color: 'hsl(var(--text-secondary))' }}>Monthly Chatbot Conversations</label>
               <span style={{ color: 'hsl(var(--primary-light))' }}>{conversations.toLocaleString()} chats</span>
             </div>
             <input 
+              id="chat-range"
               type="range" 
               min={100} 
               max={10000} 
@@ -69,10 +69,11 @@ export default function PricingCalculator({ onDeploy }) {
           {/* Voice slider */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '600' }}>
-              <span style={{ color: 'hsl(var(--text-secondary))' }}>Monthly Voice Call Minutes</span>
+              <label htmlFor="voice-range" style={{ color: 'hsl(var(--text-secondary))' }}>Monthly Voice Call Minutes</label>
               <span style={{ color: 'hsl(var(--secondary-light))' }}>{callMinutes.toLocaleString()} mins</span>
             </div>
             <input 
+              id="voice-range"
               type="range" 
               min={10} 
               max={2000} 
@@ -90,10 +91,11 @@ export default function PricingCalculator({ onDeploy }) {
           {/* Staff slider */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '600' }}>
-              <span style={{ color: 'hsl(var(--text-secondary))' }}>Displaced Human Effort (Employee equivalents)</span>
+              <label htmlFor="staff-range" style={{ color: 'hsl(var(--text-secondary))' }}>Displaced Human Effort (Employee equivalents)</label>
               <span style={{ color: 'hsl(var(--accent))' }}>{staffCount} Full-Time Equivalent</span>
             </div>
             <input 
+              id="staff-range"
               type="range" 
               min={1} 
               max={10} 

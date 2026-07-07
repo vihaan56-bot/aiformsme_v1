@@ -16,4 +16,24 @@
     <loc>https://aiformsme.co.in/wizard</loc>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://aiformsme.co.in/ai-for-small-business</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/ai-consulting-msme</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/ai-for-indian-businesses</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/ai-chatbot-for-business</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiformsme.co.in/ai-automation-for-business</loc>
+    <priority>0.9</priority>
+  </url>
 </urlset>

@@ -293,8 +293,9 @@ export default function DonationPanel() {
 
             <form onSubmit={handleDonateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Your Name *</label>
+                <label htmlFor="donor-name-input" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Your Name *</label>
                 <input 
+                  id="donor-name-input"
                   type="text" required
                   value={donorForm.name}
                   onChange={(e) => setDonorForm({ ...donorForm, name: e.target.value })}
@@ -307,8 +308,9 @@ export default function DonationPanel() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Email Address</label>
+                <label htmlFor="donor-email-input" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Email Address</label>
                 <input 
+                  id="donor-email-input"
                   type="email"
                   value={donorForm.email}
                   onChange={(e) => setDonorForm({ ...donorForm, email: e.target.value })}
@@ -321,8 +323,9 @@ export default function DonationPanel() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Phone Number *</label>
+                <label htmlFor="donor-phone-input" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>Phone Number *</label>
                 <input 
+                  id="donor-phone-input"
                   type="tel" required
                   value={donorForm.phone}
                   onChange={(e) => setDonorForm({ ...donorForm, phone: e.target.value })}

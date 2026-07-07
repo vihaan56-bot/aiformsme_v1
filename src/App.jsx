@@ -11,12 +11,15 @@ import FloatingAssistant from './components/FloatingAssistant';
 import PromoBanner from './components/PromoBanner';
 import GeneratedWebsite from './components/GeneratedWebsite';
 import DonationPanel from './components/DonationPanel';
+import SEOLandingPage from './components/SEOLandingPage';
+import useSEO from './hooks/useSEO';
 import { db, isFirebaseConfigured } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState('home'); // home, demos, pricing, dashboard, wizard
+  const [currentTab, setCurrentTab] = useState('home'); // home, demos, pricing, dashboard, wizard, landing
   const [currentSlug, setCurrentSlug] = useState(null); // Custom website slug
+  const [landingSlug, setLandingSlug] = useState(null); // SEO Landing page slug
   const [activeDemo, setActiveDemo] = useState('chatbot'); // chatbot, voice, training
   
   // App Shared State to connect components
@@ -71,18 +74,29 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get('page');
     if (pageParam && pageParam.trim()) {
-      return { tab: null, slug: pageParam.trim() };
+      return { tab: null, slug: pageParam.trim(), landingSlug: null };
     }
 
     // 2. Fall back to pathname check
     const cleanPath = window.location.pathname.replace(/^\//, '').trim();
-    if (!cleanPath) return { tab: 'home', slug: null };
+    if (!cleanPath) return { tab: 'home', slug: null, landingSlug: null };
     
     const validTabs = ['home', 'demos', 'pricing', 'dashboard', 'wizard'];
+    const landingPages = [
+      'ai-for-small-business',
+      'ai-consulting-msme',
+      'ai-for-indian-businesses',
+      'ai-chatbot-for-business',
+      'ai-automation-for-business'
+    ];
+
     if (validTabs.includes(cleanPath)) {
-      return { tab: cleanPath, slug: null };
+      return { tab: cleanPath, slug: null, landingSlug: null };
     }
-    return { tab: null, slug: cleanPath };
+    if (landingPages.includes(cleanPath)) {
+      return { tab: 'landing', slug: null, landingSlug: cleanPath };
+    }
+    return { tab: null, slug: cleanPath, landingSlug: null };
   };
 
   useEffect(() => {
@@ -91,9 +105,15 @@ export default function App() {
     if (route.slug) {
       setCurrentSlug(route.slug);
       setCurrentTab(null);
+      setLandingSlug(null);
+    } else if (route.landingSlug) {
+      setCurrentTab('landing');
+      setLandingSlug(route.landingSlug);
+      setCurrentSlug(null);
     } else {
       setCurrentTab(route.tab || 'home');
       setCurrentSlug(null);
+      setLandingSlug(null);
     }
 
     const handlePopState = () => {
@@ -101,9 +121,15 @@ export default function App() {
       if (r.slug) {
         setCurrentSlug(r.slug);
         setCurrentTab(null);
+        setLandingSlug(null);
+      } else if (r.landingSlug) {
+        setCurrentTab('landing');
+        setLandingSlug(r.landingSlug);
+        setCurrentSlug(null);
       } else {
         setCurrentTab(r.tab || 'home');
         setCurrentSlug(null);
+        setLandingSlug(null);
       }
     };
 
@@ -147,11 +173,19 @@ export default function App() {
   }, []);
 
   // Nav helper using pushState
-  const navigateTo = (tab) => {
-    setCurrentTab(tab);
-    setCurrentSlug(null);
-    const path = tab === 'home' ? '/' : `/${tab}`;
-    window.history.pushState(null, '', path);
+  const navigateTo = (tab, pageSlug = null) => {
+    if (tab === 'landing' && pageSlug) {
+      setCurrentTab('landing');
+      setLandingSlug(pageSlug);
+      setCurrentSlug(null);
+      window.history.pushState(null, '', `/${pageSlug}`);
+    } else {
+      setCurrentTab(tab);
+      setCurrentSlug(null);
+      setLandingSlug(null);
+      const path = tab === 'home' ? '/' : `/${tab}`;
+      window.history.pushState(null, '', path);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -159,10 +193,94 @@ export default function App() {
   const selectDemo = (demoId) => {
     setCurrentTab('demos');
     setCurrentSlug(null);
+    setLandingSlug(null);
     setActiveDemo(demoId);
     window.history.pushState(null, '', '/demos');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Dynamic SEO configurations for main tabs
+  const tabSEOConfigs = {
+    home: {
+      title: 'AI for Small Businesses & MSMEs - Automation & Chatbot Solutions | AIForMSME',
+      description: 'AIForMSME provides custom AI chatbots, automation tools, and AI consulting for small businesses and MSMEs. Automate lead generation, customer service, and operations.',
+      keywords: 'AI for Small Business, AI for MSMEs, AI Chatbot for Business, AI Automation for Business, AI Consulting for MSMEs, AI for SMEs, AI for Indian Businesses, Business AI Solutions',
+      canonicalUrl: 'https://aiformsme.co.in/',
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "AIForMSME",
+        "url": "https://aiformsme.co.in",
+        "logo": "https://aiformsme.co.in/favicon.svg",
+        "description": "AIForMSME provides custom chatbot, voice response, and AI training solutions to help Micro, Small, and Medium Enterprises automate operations and grow revenue.",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "support@aiformsme.co.in"
+        }
+      }
+    },
+    demos: {
+      title: 'Interactive AI Sandbox: Chatbot & Website Generator - AIForMSME',
+      description: 'Test-drive our custom AI chatbot, automated voice assistant, and live website generator. See how AI chatbot for business can capture leads and automate support.',
+      keywords: 'AI Chatbot for Business, AI Automation, Interactive AI Demo, MSME Chatbot, AI Website Generator',
+      canonicalUrl: 'https://aiformsme.co.in/demos',
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "name": "MSMEChat Interactive Sandbox & Demo",
+        "provider": {
+          "@type": "Organization",
+          "name": "AIForMSME"
+        },
+        "description": "Test-drive customer engagement chatbots and launch customized business websites in seconds.",
+        "areaServed": "IN"
+      }
+    },
+    pricing: {
+      title: 'Affordable AI Pricing & ROI Savings Calculator - AIForMSME',
+      description: 'Calculate exactly how much your business can save by deploying customized AI solutions. View our transparent subscription pricing for small business automation.',
+      keywords: 'AI for Small Business Pricing, Business AI Solutions cost, ROI calculator, MSME cost savings',
+      canonicalUrl: 'https://aiformsme.co.in/pricing',
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "AIForMSME Business Automation Solutions",
+        "description": "Customized AI chatbot, voice responder, and staff training services for small businesses.",
+        "offers": {
+          "@type": "AggregateOffer",
+          "lowPrice": "3999",
+          "priceCurrency": "INR"
+        }
+      }
+    },
+    dashboard: {
+      title: 'Client Portal & AI Leads Dashboard - AIForMSME',
+      description: 'Access your AI-generated leads, conversation transcripts, and integration controls. Track customer inquiries captured by your custom business chatbot.',
+      keywords: 'AI Leads Dashboard, MSME client portal, CRM lead tracker',
+      canonicalUrl: 'https://aiformsme.co.in/dashboard'
+    },
+    wizard: {
+      title: 'Free AI Readiness Audit & Integration Roadmap - AIForMSME',
+      description: 'Take our 1-minute questionnaire to analyze operational bottlenecks and receive a customized AI action plan and integration roadmap for your small business.',
+      keywords: 'AI Consulting for MSMEs, AI Readiness Audit, Business automation roadmap',
+      canonicalUrl: 'https://aiformsme.co.in/wizard',
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "name": "AI Readiness Audit & Consulting Wizard",
+        "provider": {
+          "@type": "Organization",
+          "name": "AIForMSME"
+        },
+        "description": "Evaluate business bottlenecks and receive an automated roadmap for AI integration.",
+        "areaServed": "IN"
+      }
+    }
+  };
+
+  const currentSEO = currentTab && tabSEOConfigs[currentTab] ? tabSEOConfigs[currentTab] : null;
+  useSEO(currentSEO || {});
 
   if (currentSlug) {
     return (
@@ -326,6 +444,10 @@ export default function App() {
           </section>
         )}
 
+        {currentTab === 'landing' && (
+          <SEOLandingPage slug={landingSlug} onNavigate={navigateTo} />
+        )}
+
       </main>
 
       {/* Footer */}
@@ -344,7 +466,11 @@ export default function App() {
           <div className="footer-col">
             <h4>Solutions</h4>
             <ul className="footer-links">
-              <li><span className="footer-link" onClick={() => selectDemo('chatbot')} style={{ cursor: 'pointer' }}>MSMEChat Bot & Website Generator</span></li>
+              <li><span className="footer-link" onClick={() => navigateTo('landing', 'ai-for-small-business')} style={{ cursor: 'pointer' }}>AI for Small Business</span></li>
+              <li><span className="footer-link" onClick={() => navigateTo('landing', 'ai-chatbot-for-business')} style={{ cursor: 'pointer' }}>AI Chatbot for Business</span></li>
+              <li><span className="footer-link" onClick={() => navigateTo('landing', 'ai-automation-for-business')} style={{ cursor: 'pointer' }}>AI Automation for Business</span></li>
+              <li><span className="footer-link" onClick={() => navigateTo('landing', 'ai-consulting-msme')} style={{ cursor: 'pointer' }}>AI Consulting for MSMEs</span></li>
+              <li><span className="footer-link" onClick={() => navigateTo('landing', 'ai-for-indian-businesses')} style={{ cursor: 'pointer' }}>AI for Indian Businesses</span></li>
             </ul>
           </div>
 

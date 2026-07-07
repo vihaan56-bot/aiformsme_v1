@@ -250,11 +250,11 @@ Report generated on: ${new Date().toLocaleDateString()}
                 <h3 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>Receive your custom report</h3>
                 <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Input your contact details to generate your tailored AI roadmap report.</p>
               </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Your Full Name</label>
+                  <label htmlFor="owner-name-input" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Your Full Name</label>
                   <input 
+                    id="owner-name-input"
                     type="text" 
                     required 
                     value={ownerName} 
@@ -264,8 +264,9 @@ Report generated on: ${new Date().toLocaleDateString()}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Business Name</label>
+                  <label htmlFor="biz-name-input" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Business Name</label>
                   <input 
+                    id="biz-name-input"
                     type="text" 
                     required 
                     value={bizName} 
@@ -275,8 +276,9 @@ Report generated on: ${new Date().toLocaleDateString()}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Work Email Address</label>
+                  <label htmlFor="work-email-input" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Work Email Address</label>
                   <input 
+                    id="work-email-input"
                     type="email" 
                     required 
                     value={email} 
