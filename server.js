@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -15,8 +16,27 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// In-memory persistent users store for operators (Starts completely empty)
-const usersStore = {};
+// Load persistent users store from users.json file (so restarts don't erase accounts)
+let usersStore = {};
+const USERS_FILE_PATH = path.join(process.cwd(), 'users.json');
+
+try {
+  if (fs.existsSync(USERS_FILE_PATH)) {
+    const fileData = fs.readFileSync(USERS_FILE_PATH, 'utf-8');
+    usersStore = JSON.parse(fileData || '{}');
+    console.log('[AUTH] Loaded registered operator users database from users.json');
+  }
+} catch (err) {
+  console.error('[AUTH ERROR] Failed to load users.json database:', err);
+}
+
+const saveUsersToFile = () => {
+  try {
+    fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(usersStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[AUTH ERROR] Failed to save users to users.json database:', err);
+  }
+};
 
 // Route: User Registration
 app.post('/api/auth/register', (req, res) => {
@@ -31,12 +51,13 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
   }
 
-  // Create new user profile in memory
+  // Create new user profile in memory and file database
   usersStore[emailKey] = {
     name: name.trim(),
     email: emailKey,
     password: password
   };
+  saveUsersToFile();
 
   console.log(`[AUTH] Registered new operator user account: ${emailKey}`);
 
