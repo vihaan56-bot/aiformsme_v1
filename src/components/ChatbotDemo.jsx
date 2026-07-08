@@ -561,6 +561,7 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
 
   // Configuration State
   const [bizName, setBizName] = useState("");
+  const [agentTone, setAgentTone] = useState("friendly"); // friendly, professional, sales, direct
   const [systemPrompt, setSystemPrompt] = useState("");
   const [requireEmail, setRequireEmail] = useState(true);
   const [requirePhone, setRequirePhone] = useState(false);
@@ -578,10 +579,28 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
   const [productsList, setProductsList] = useState([]);
   const [enableChatBot, setEnableChatBot] = useState(true);
 
+  const handleToneChange = (newTone) => {
+    setAgentTone(newTone);
+    setBotTrained(false);
+
+    const nameToUse = bizName || "[Business Name]";
+    let promptTemplate = "";
+    if (newTone === "friendly") {
+      promptTemplate = `You are a warm, welcoming, and helpful assistant for ${nameToUse}. Use a friendly tone, support with matching emojis, and show real empathy. Explain our services and help answer queries. If they want to order or book a consultation, ask for their name, email, and description of what they want.`;
+    } else if (newTone === "professional") {
+      promptTemplate = `You are a highly professional, polite, and formal customer representative for ${nameToUse}. Maintain a clear, objective corporate tone with absolute precision. Do not use any emojis or casual expressions. Answer queries professionally and request their contact details (name, email, phone) to arrange formal callback consultations.`;
+    } else if (newTone === "sales") {
+      promptTemplate = `You are a persuasive, high-converting sales specialist for ${nameToUse}. Your goal is to guide visitors toward making bookings or purchasing catalog products. Highlight the value of our products and prompt them early in the conversation for their contact details (name, email) to lock in special discounts or quotes.`;
+    } else if (newTone === "direct") {
+      promptTemplate = `You are a direct, concise, and straight-to-the-point assistant for ${nameToUse}. Keep responses extremely brief, crisp, and factual. Answer user questions directly in one or two short sentences without any fluff. Prompt for their contact information only when they explicitly ask to be contacted or place an order.`;
+    }
+    setSystemPrompt(promptTemplate);
+  };
+
   // Dynamic system prompt generation as the user types their business name
   useEffect(() => {
     if (bizName && !systemPrompt) {
-      setSystemPrompt(`You are a friendly assistant for ${bizName}. Tell customers about our services and help answer their queries. If they want to order or book a consultation, ask for their name, email, and description of what they want.`);
+      handleToneChange(agentTone);
     }
   }, [bizName]);
 
@@ -636,7 +655,8 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
         requireEmail,
         requirePhone,
         selectedModel,
-        apiKey
+        apiKey,
+        agentTone
       },
       enableBot: enableChatBot,
       ownerEmail: currentUser?.email || 'anonymous'
@@ -1186,6 +1206,31 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Settings style={{ color: 'hsl(var(--primary-light))' }} size={22} />
                   <h3 style={{ fontSize: '1.25rem' }}>AI Bot Persona</h3>
+                </div>
+
+                {/* AI Tone of Voice Selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="tone-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>AI Tone of Voice</label>
+                  <select 
+                    id="tone-wizard"
+                    value={agentTone}
+                    onChange={(e) => handleToneChange(e.target.value)}
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="friendly" style={{ background: '#0a0f1d', color: '#fff' }}>😊 Friendly & Warm (Default)</option>
+                    <option value="professional" style={{ background: '#0a0f1d', color: '#fff' }}>💼 Highly Professional & Formal</option>
+                    <option value="sales" style={{ background: '#0a0f1d', color: '#fff' }}>🚀 Persuasive & Sales-Oriented</option>
+                    <option value="direct" style={{ background: '#0a0f1d', color: '#fff' }}>⚡ Direct & Concise</option>
+                  </select>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
