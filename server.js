@@ -103,11 +103,11 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Initialize Razorpay Instance helper
-const getRazorpayInstance = () => {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+const getRazorpayInstance = (customKeyId, customKeySecret) => {
+  const keyId = customKeyId || process.env.RAZORPAY_KEY_ID;
+  const keySecret = customKeySecret || process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) {
-    console.log('[RAZORPAY] Credentials missing in env. Running in Sandbox Simulation mode.');
+    console.log('[RAZORPAY] Credentials missing. Running in Sandbox Simulation mode.');
     return null;
   }
   return new Razorpay({
@@ -118,12 +118,12 @@ const getRazorpayInstance = () => {
 
 // Route: Create Razorpay Order
 app.post('/api/payment/create-order', async (req, res) => {
-  const { amount, currency = 'INR', receipt = 'receipt_1' } = req.body;
+  const { amount, currency = 'INR', receipt = 'receipt_1', razorpayKeyId, razorpayKeySecret } = req.body;
   if (!amount) {
     return res.status(400).json({ success: false, message: 'Amount is required.' });
   }
 
-  const razorpayInstance = getRazorpayInstance();
+  const razorpayInstance = getRazorpayInstance(razorpayKeyId, razorpayKeySecret);
   if (!razorpayInstance) {
     // Return simulated sandbox payload
     return res.json({
@@ -160,8 +160,8 @@ app.post('/api/payment/create-order', async (req, res) => {
 
 // Route: Verify Razorpay Payment Signature
 app.post('/api/payment/verify-payment', (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, razorpayKeySecret } = req.body;
+  const keySecret = razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET;
 
   if (!keySecret) {
     console.log('[RAZORPAY SIMULATOR] Verified simulated checkout.');

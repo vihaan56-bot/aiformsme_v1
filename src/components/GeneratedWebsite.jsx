@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ShoppingBag, Calendar, Check, Send, PhoneCall, ChevronRight, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Sparkles, ShoppingBag, Calendar, Check, Send, PhoneCall, ChevronRight, AlertCircle, ArrowLeft, MessageSquare } from 'lucide-react';
 import { db, isFirebaseConfigured } from '../firebase';
 import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
 import FloatingBotWidget from './FloatingBotWidget';
@@ -660,7 +660,11 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
       const ordRes = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amount })
+        body: JSON.stringify({ 
+          amount: amount,
+          razorpayKeyId: siteConfig.razorpayKeyId || '',
+          razorpayKeySecret: siteConfig.razorpayKeySecret || ''
+        })
       });
       const orderData = await ordRes.json();
 
@@ -668,7 +672,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
         throw new Error(orderData.message || "Failed to initiate payment transaction.");
       }
 
-      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+      const keyId = siteConfig.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
 
       const options = {
         key: keyId,
@@ -684,7 +688,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
             body: JSON.stringify({
               razorpay_order_id: orderData.order_id,
               razorpay_payment_id: response.razorpay_payment_id || 'pay_simulated',
-              razorpay_signature: response.razorpay_signature || 'sig_simulated'
+              razorpay_signature: response.razorpay_signature || 'sig_simulated',
+              razorpayKeySecret: siteConfig.razorpayKeySecret || ''
             })
           });
           const verifyData = await verifyRes.json();
@@ -1031,19 +1036,10 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
           }}>
             <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', borderRadius: '50%', background: 'var(--theme-primary)', opacity: '0.08', filter: 'blur(30px)' }} />
             <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Operating Hours</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px' }}>
-                <span style={{ color: 'var(--theme-text-muted)' }}>Monday - Friday</span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>7:00 AM - 6:00 PM</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--theme-border)', paddingBottom: '8px' }}>
-                <span style={{ color: 'var(--theme-text-muted)' }}>Saturday</span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>8:00 AM - 4:00 PM</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-                <span style={{ color: 'var(--theme-text-muted)' }}>Sunday</span>
-                <span style={{ color: 'var(--theme-primary)' }}>Closed</span>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem', whiteSpace: 'pre-line', lineHeight: '1.6' }}>
+              <span style={{ color: 'var(--theme-text-muted)' }}>
+                {siteConfig.bizHours || "Monday - Friday: 7:00 AM - 6:00 PM\nSaturday: 8:00 AM - 4:00 PM\nSunday: Closed"}
+              </span>
             </div>
           </div>
         </div>
@@ -1089,28 +1085,61 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
               <p style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem', lineHeight: '1.5', flex: 1 }}>
                 {item.desc}
               </p>
-              <button
-                onClick={() => setCheckoutProduct(item)}
-                style={{
-                  marginTop: '12px',
-                  padding: '10px 16px',
-                  fontSize: '0.8rem',
-                  fontWeight: '700',
-                  color: 'white',
-                  background: 'linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-              >
-                <ShoppingBag size={14} /> Buy & Book Now
-              </button>
+              {siteConfig?.enablePayments ? (
+                <button
+                  onClick={() => setCheckoutProduct(item)}
+                  style={{
+                    marginTop: '12px',
+                    padding: '10px 16px',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    color: 'white',
+                    background: 'linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <ShoppingBag size={14} /> Buy & Book Now
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      msg: `Hi! I am interested in inquiring about your offering: "${item.name}" (Price: ${item.price}). Please share more information on this.`
+                    }));
+                    window.location.hash = 'contact';
+                    setTimeout(() => {
+                      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 50);
+                  }}
+                  style={{
+                    marginTop: '12px',
+                    padding: '10px 16px',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    color: 'white',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--theme-border)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <MessageSquare size={14} /> Inquire Now
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1137,7 +1166,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
                 </div>
                 <div>
                   <h4 style={{ color: 'white', fontSize: '0.85rem', margin: 0 }}>Call Center Support</h4>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>+1 (555) 482-9012</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>{siteConfig.bizPhone || "+91 (555) 019-2834"}</span>
                 </div>
               </div>
             </div>

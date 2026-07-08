@@ -1197,6 +1197,46 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
                     This defines the clean link to view your generated website.
                   </span>
                 </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="phone-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Contact Phone Number</label>
+                  <input 
+                    id="phone-wizard"
+                    type="text" 
+                    value={bizPhone}
+                    onChange={(e) => setBizPhone(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: 'white',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="hours-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Operating Hours Description</label>
+                  <textarea 
+                    id="hours-wizard"
+                    rows={3}
+                    value={bizHours}
+                    onChange={(e) => setBizHours(e.target.value)}
+                    placeholder="e.g. Monday - Friday: 9:00 AM - 6:00 PM&#10;Saturday: 10:00 AM - 4:00 PM&#10;Sunday: Closed"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      lineHeight: '1.5',
+                      resize: 'none'
+                    }}
+                  />
+                </div>
               </div>
             )}
 
@@ -1335,6 +1375,62 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
                       <option value="qwen/qwen-2.5-coder-32b-instruct:free">Qwen 2.5 Coder 32B (Free)</option>
                     </select>
                   </div>
+
+                  {/* Razorpay Online Payments Configuration */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: '10px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Razorpay Online Payments</span>
+                    
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={enablePayments} 
+                        onChange={(e) => setEnablePayments(e.target.checked)} 
+                      />
+                      Enable checkout payments on website
+                    </label>
+
+                    {enablePayments && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <label htmlFor="rzp-id" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))' }}>Razorpay Key ID</label>
+                          <input 
+                            id="rzp-id"
+                            type="text"
+                            value={razorpayKeyId}
+                            onChange={(e) => setRazorpayKeyId(e.target.value)}
+                            placeholder="e.g. rzp_live_xxxx or rzp_test_xxxx"
+                            style={{
+                              background: 'rgba(15,23,42,0.9)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              color: 'white',
+                              fontSize: '0.85rem'
+                            }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <label htmlFor="rzp-secret" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))' }}>Razorpay Key Secret</label>
+                          <input 
+                            id="rzp-secret"
+                            type="password"
+                            value={razorpayKeySecret}
+                            onChange={(e) => setRazorpayKeySecret(e.target.value)}
+                            placeholder="Key Secret string"
+                            style={{
+                              background: 'rgba(15,23,42,0.9)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              color: 'white',
+                              fontSize: '0.85rem'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
