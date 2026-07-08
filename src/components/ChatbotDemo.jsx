@@ -1091,157 +1091,60 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       <div className="chatbot-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'stretch' }}>
         
         {/* Left Column: Setup Wizard */}
-        <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '560px', justifyContent: 'space-between' }}>
-          {wizardStep === 1 ? (
-            /* Render Step 1: Customize Your Bot */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Wizard Step Indicator */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--primary-light))', fontWeight: 'bold' }}>STEP 1 OF 2</span>
-                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Configure AI Chatbot</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Settings style={{ color: 'hsl(var(--primary-light))' }} size={22} />
-                <h3 style={{ fontSize: '1.25rem' }}>AI Bot Instructions</h3>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="biz-name-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Business Name *</label>
-                <input 
-                  id="biz-name-wizard"
-                  type="text" 
-                  value={bizName} 
-                  onChange={(e) => {
-                    setBizName(e.target.value);
-                    setBotTrained(false);
-                  }} 
-                  placeholder="e.g. Rawat Bakery"
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    color: 'white',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="prompt-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>System Prompts & Knowledge Base *</label>
-                <textarea 
-                  id="prompt-wizard"
-                  rows={4}
-                  value={systemPrompt} 
-                  onChange={(e) => {
-                    setSystemPrompt(e.target.value);
-                    setBotTrained(false);
-                  }} 
-                  placeholder="Define how the AI should talk, answer questions, and behave..."
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    color: 'white',
-                    fontSize: '0.9rem',
-                    lineHeight: '1.5',
-                    resize: 'none'
-                  }}
-                />
-                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
-                  Define the AI chatbot's personality, services/products, and constraints.
+        <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '480px', justifyContent: 'space-between' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Wizard Step Indicator & Progress Bar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--primary-light))', fontWeight: 'bold' }}>
+                  STEP {wizardStep} OF 5
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', fontWeight: '500' }}>
+                  {wizardStep === 1 && "Business Identity"}
+                  {wizardStep === 2 && "AI Agent Instructions"}
+                  {wizardStep === 3 && "Sandbox Deployment"}
+                  {wizardStep === 4 && "Webpage Design"}
+                  {wizardStep === 5 && "Webpage Content"}
                 </span>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Required Lead Info</span>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={requireEmail} onChange={(e) => {
-                      setRequireEmail(e.target.checked);
-                      setBotTrained(false);
-                    }} />
-                    Capture Email
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={requirePhone} onChange={(e) => {
-                      setRequirePhone(e.target.checked);
-                      setBotTrained(false);
-                    }} />
-                    Capture Phone Number
-                  </label>
-                </div>
+              <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${wizardStep * 20}%`, height: '100%', background: 'linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%)', transition: 'width 0.3s ease' }} />
               </div>
+            </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Live OpenRouter Integration (Optional)</span>
+            {/* STEP 1: Business Identity */}
+            {wizardStep === 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Globe style={{ color: 'hsl(var(--primary-light))' }} size={22} />
+                  <h3 style={{ fontSize: '1.25rem' }}>Business Identity</h3>
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label htmlFor="api-key-wizard" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>OpenRouter API Key</label>
+                  <label htmlFor="biz-name-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Business Name *</label>
                   <input 
-                    id="api-key-wizard"
-                    type="password" 
-                    placeholder="sk-or-v1-..."
-                    value={apiKey} 
+                    id="biz-name-wizard"
+                    type="text" 
+                    value={bizName} 
                     onChange={(e) => {
-                      setApiKey(e.target.value);
+                      setBizName(e.target.value);
                       setBotTrained(false);
                     }} 
+                    placeholder="e.g. Rawat Bakery"
                     style={{
                       background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
-                      padding: '10px',
+                      padding: '12px',
                       color: 'white',
-                      fontSize: '0.85rem'
+                      fontSize: '0.95rem'
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label htmlFor="model-select-wizard" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Model Selection</label>
-                  <select 
-                    id="model-select-wizard"
-                    value={selectedModel} 
-                    onChange={(e) => {
-                      setSelectedModel(e.target.value);
-                      setBotTrained(false);
-                    }} 
-                    style={{
-                      background: 'rgba(15,23,42,0.9)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px',
-                      padding: '10px',
-                      color: 'white',
-                      fontSize: '0.85rem',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="openrouter/free">Auto-Select Free Model (Recommended)</option>
-                    <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
-                    <option value="google/gemma-2-9b-it:free">Gemma 2 9B (Free)</option>
-                    <option value="qwen/qwen-2.5-coder-32b-instruct:free">Qwen 2.5 Coder 32B (Free)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Render Step 2: Website Setup */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Wizard Step Indicator */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--secondary-light))', fontWeight: 'bold' }}>STEP 2 OF 2</span>
-                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Custom Webpage Setup</span>
-              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Globe style={{ color: 'hsl(var(--secondary-light))' }} size={22} />
-                <h3 style={{ fontSize: '1.25rem' }}>Generate Custom Webpage</h3>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label htmlFor="slug-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>URL Slug</label>
+                  <label htmlFor="slug-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>URL Slug *</label>
                   <input 
                     id="slug-wizard"
                     type="text" 
@@ -1252,359 +1155,548 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
                       background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
+                      padding: '12px',
+                      color: 'white',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
+                    This defines the clean link to view your generated website.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: AI Agent Instructions */}
+            {wizardStep === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Settings style={{ color: 'hsl(var(--primary-light))' }} size={22} />
+                  <h3 style={{ fontSize: '1.25rem' }}>AI Bot Persona</h3>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="prompt-wizard" style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>System Prompts & Knowledge Base *</label>
+                  <textarea 
+                    id="prompt-wizard"
+                    rows={4}
+                    value={systemPrompt} 
+                    onChange={(e) => {
+                      setSystemPrompt(e.target.value);
+                      setBotTrained(false);
+                    }} 
+                    placeholder="Define how the AI should talk, answer questions, and behave..."
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      lineHeight: '1.5',
+                      resize: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Required Lead Info</span>
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={requireEmail} onChange={(e) => {
+                        setRequireEmail(e.target.checked);
+                        setBotTrained(false);
+                      }} />
+                      Capture Email
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={requirePhone} onChange={(e) => {
+                        setRequirePhone(e.target.checked);
+                        setBotTrained(false);
+                      }} />
+                      Capture Phone Number
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Sandbox Deployment */}
+            {wizardStep === 3 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Bot style={{ color: 'hsl(var(--primary-light))' }} size={22} />
+                  <h3 style={{ fontSize: '1.25rem' }}>Engine Sandbox Training</h3>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Live OpenRouter Integration (Optional)</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label htmlFor="api-key-wizard" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>OpenRouter API Key</label>
+                    <input 
+                      id="api-key-wizard"
+                      type="password" 
+                      placeholder="sk-or-v1-..."
+                      value={apiKey} 
+                      onChange={(e) => {
+                        setApiKey(e.target.value);
+                        setBotTrained(false);
+                      }} 
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        color: 'white',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label htmlFor="model-select-wizard" style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>Model Selection</label>
+                    <select 
+                      id="model-select-wizard"
+                      value={selectedModel} 
+                      onChange={(e) => {
+                        setSelectedModel(e.target.value);
+                        setBotTrained(false);
+                      }} 
+                      style={{
+                        background: 'rgba(15,23,42,0.9)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        color: 'white',
+                        fontSize: '0.85rem',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="openrouter/free">Auto-Select Free Model (Recommended)</option>
+                      <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
+                      <option value="google/gemma-2-9b-it:free">Gemma 2 9B (Free)</option>
+                      <option value="qwen/qwen-2.5-coder-32b-instruct:free">Qwen 2.5 Coder 32B (Free)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                  <button 
+                    type="button"
+                    className="btn-primary" 
+                    onClick={handleConfigChange} 
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px', 
+                      fontSize: '0.9rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '8px'
+                    }}
+                  >
+                    Deploy & Train Sandbox AI Agent
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', background: 'rgba(0,0,0,0.15)', borderRadius: '6px' }}>
+                    {botTrained ? (
+                      <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} /> Sandbox model trained & active!
+                      </span>
+                    ) : (
+                      <span style={{ color: '#facc15', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ⚠️ Click button to train sandbox model.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Webpage Design & Styling */}
+            {wizardStep === 4 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Palette style={{ color: 'hsl(var(--secondary-light))' }} size={22} />
+                  <h3 style={{ fontSize: '1.25rem' }}>Webpage Design & Theme</h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label htmlFor="template-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Template Design</label>
+                    <select 
+                      id="template-wizard"
+                      value={webTemplate}
+                      onChange={(e) => handleTemplateChange(e.target.value)}
+                      style={{
+                        background: 'rgba(15,23,42,0.9)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        color: 'white',
+                        fontSize: '0.85rem',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="bakery">Bakery & Café Layout</option>
+                      <option value="services">Professional Consulting</option>
+                      <option value="salon">Spa & Beauty Salon</option>
+                      <option value="fitness">Fitness Studio Layout</option>
+                      <option value="dental">Dental & Smile Clinic</option>
+                      <option value="plumbing">Plumbing & Pipe Repair</option>
+                      <option value="petcare">Pet Grooming & Spa</option>
+                      <option value="realestate">Real Estate Agency</option>
+                      <option value="boutique">Boutique Fashion Store</option>
+                      <option value="bookstore">Cozy Bookstore & Cafe</option>
+                      <option value="law">Law Firm Advocacy</option>
+                      <option value="pharmacy">Pharmacy & Wellness Hub</option>
+                      <option value="autorepair">Auto Repair & Diagnostic</option>
+                      <option value="photography">Professional Photo Studio</option>
+                      <option value="grocery">Organic Grocery Delivery</option>
+                      <option value="software">Software Dev Agency</option>
+                      <option value="catering">Gourmet Events Catering</option>
+                      <option value="cleaning">Eco Cleaning Services</option>
+                      <option value="marketing">Digital Marketing Growth</option>
+                      <option value="tutoring">Tutoring & Tech Academy</option>
+                      <option value="florist">Flower Shop & Floral Design</option>
+                      <option value="construction">Roofing & House Building</option>
+                      <option value="music">Music School & Vocal coach</option>
+                      <option value="jewelry">Bespoke Jewelry & Fine Gold</option>
+                      <option value="optician">Optician Eyewear Clinic</option>
+                      <option value="coworking">Co-working Space & desks</option>
+                      <option value="travel">Travel Agency Tours</option>
+                      <option value="laundry">Dry Cleaning & Laundry</option>
+                      <option value="barber">Barber Lounge & Shave</option>
+                      <option value="architecture">Architecture & Space Design</option>
+                      <option value="veterinary">Veterinary Pet Care</option>
+                      <option value="handyman">Handyman Repairs & Installs</option>
+                      <option value="webdesign">Modern Web Design Studio</option>
+                      <option value="accounting">Accounting & GST Tax Advisory</option>
+                      <option value="nails">Nail Salon & Gel Art</option>
+                      <option value="security">Security Guard & CCTV</option>
+                      <option value="electrician">Electrician Wiring Repair</option>
+                      <option value="carwash">Foam Car Wash & Detailing</option>
+                      <option value="pestcontrol">Safe Eco Pest Control</option>
+                      <option value="bicycle">Bicycle Shop & Gear Tuning</option>
+                      <option value="yoga">Yoga Vinyasa Studio</option>
+                      <option value="language">Language School Lessons</option>
+                      <option value="events">Event Organizer & Design</option>
+                      <option value="artgallery">Fine Art Painting Gallery</option>
+                      <option value="dentrepair">Bumper Paint & Dent Repair</option>
+                      <option value="tailor">Bespoke Tailor Stitching</option>
+                      <option value="tattoo">Creative Tattoo Ink Studio</option>
+                      <option value="gardening">Landscaping & Garden Trim</option>
+                      <option value="crossfit">CrossFit Box & Lifting Gym</option>
+                      <option value="physio">Physiotherapy & Rehab Care</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label htmlFor="theme-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Theme Accent</label>
+                    <select 
+                      id="theme-wizard"
+                      value={webTheme}
+                      onChange={(e) => setWebTheme(e.target.value)}
+                      style={{
+                        background: 'rgba(15,23,42,0.9)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        color: 'white',
+                        fontSize: '0.85rem',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="amber">Warm Amber (Cozy)</option>
+                      <option value="mint">Emerald Mint (Fresh)</option>
+                      <option value="breeze">Ocean Breeze (Clean)</option>
+                      <option value="cyber">Cyberpunk Dark (Vibrant Neon)</option>
+                      <option value="rose">Rose Quartz (Elegant)</option>
+                      <option value="lavender">Lavender Dream (Soft Slate)</option>
+                      <option value="crimson">Crimson Ruby (Bold Red)</option>
+                      <option value="midnight">Midnight Blue (Royal Indigo)</option>
+                      <option value="forest">Forest Moss (Deep Pine)</option>
+                      <option value="citrus">Citrus Gold (Vibrant Amber)</option>
+                      <option value="violet">Electric Violet (Neon Purple)</option>
+                      <option value="coffee">Coffee Cream (Earthy Brown)</option>
+                      <option value="aqua">Aqua Marine (Tropical Teal)</option>
+                      <option value="sunset">Sunset Pink (Magenta Gradient)</option>
+                      <option value="platinum">Platinum Slate (Metallic Silver)</option>
+                      <option value="solar">Solar Yellow (High Contrast Obsidian)</option>
+                      <option value="lime">Neon Lime (Toxic Space)</option>
+                      <option value="plum">Plum Velvet (Rich Aubergine)</option>
+                      <option value="royalgold">Royal Gold (Navy & Gold)</option>
+                      <option value="copper">Rusty Copper (Warm Earth)</option>
+                      <option value="vampire">Vampire Red (Pitch Black & Blood Red)</option>
+                      <option value="orchid">Orchid Petal (Soft Orchid Pink)</option>
+                      <option value="peach">Peach Sorbet (Terracotta Peach)</option>
+                      <option value="sage">Sage Garden (Muted Olive)</option>
+                      <option value="skyblue">Sky Blue (Sunny Cyan)</option>
+                      <option value="charcoal">Charcoal Ash (Pure Slate Gray)</option>
+                      <option value="ice">Ice Blizzard (Frosted Pale Blue)</option>
+                      <option value="banana">Banana Split (Creamy Pastel Yellow)</option>
+                      <option value="chocolate">Chocolate Truffle (Rich Dark Cocoa)</option>
+                      <option value="bubblegum">Bubblegum Pink (Sweet Candy Pink)</option>
+                      <option value="desert">Desert Sand (Warm Gold Sand)</option>
+                      <option value="tropical">Tropical Ocean (Deep Turquoise Marine)</option>
+                      <option value="magma">Magma Orange (Volcanic Lava)</option>
+                      <option value="electricindigo">Electric Indigo (Sleek Deep Indigo)</option>
+                      <option value="cyberneon">Neon Cyber (High-Volt Pink & Lime)</option>
+                      <option value="olive">Olive Grove (Rustic Deep Olive)</option>
+                      <option value="pistachio">Pistachio Green (Cozy Soft Sage)</option>
+                      <option value="coral">Coral Reef (Bright Sunset Orange)</option>
+                      <option value="teal">Teal Lagoon (Sleek Dark Teal)</option>
+                      <option value="glacier">Glacier Blue (Frosted Icy Blue)</option>
+                      <option value="deeppurple">Deep Purple (Midnight Purple Accent)</option>
+                      <option value="cherryblossom">Cherry Blossom (Warm Sakura Pink)</option>
+                      <option value="autumn">Autumn Leaf (Cozy Maple Orange)</option>
+                      <option value="mermaid">Mermaid Lagoon (Deep Ocean Aquamarine)</option>
+                      <option value="bronze">Steampunk Bronze (Rustic Dark Brass)</option>
+                      <option value="steel">Steel Metallic (Cool Graphite Slate)</option>
+                      <option value="bordeaux">Bordeaux Wine (Rich Deep Burgundy)</option>
+                      <option value="tangerine">Neon Tangerine (Vibrant Coal Orange)</option>
+                      <option value="mintchoc">Mint Chocolate (Sweet Mint Green)</option>
+                      <option value="zen">Zen Bamboo (Balanced Moss & Ochre)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label htmlFor="headline-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Website Headline Banner *</label>
+                  <input 
+                    id="headline-wizard"
+                    type="text" 
+                    value={webTitle}
+                    onChange={(e) => setWebTitle(e.target.value)}
+                    placeholder="Enter main header headline..."
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
                       padding: '10px',
                       color: 'white',
                       fontSize: '0.85rem'
                     }}
                   />
                 </div>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label htmlFor="template-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Template Design</label>
-                  <select 
-                    id="template-wizard"
-                    value={webTemplate}
-                    onChange={(e) => handleTemplateChange(e.target.value)}
+                  <label htmlFor="subtitle-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Sub-headline Introduction *</label>
+                  <input 
+                    id="subtitle-wizard"
+                    type="text" 
+                    value={webSubtitle}
+                    onChange={(e) => setWebSubtitle(e.target.value)}
+                    placeholder="Enter introductory sub-headline..."
                     style={{
-                      background: 'rgba(15,23,42,0.9)',
+                      background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
                       padding: '10px',
                       color: 'white',
-                      fontSize: '0.85rem',
-                      outline: 'none'
+                      fontSize: '0.85rem'
                     }}
-                  >
-                    <option value="bakery">Bakery & Café Layout</option>
-                    <option value="services">Professional Consulting</option>
-                    <option value="salon">Spa & Beauty Salon</option>
-                    <option value="fitness">Fitness Studio Layout</option>
-                    <option value="dental">Dental & Smile Clinic</option>
-                    <option value="plumbing">Plumbing & Pipe Repair</option>
-                    <option value="petcare">Pet Grooming & Spa</option>
-                    <option value="realestate">Real Estate Agency</option>
-                    <option value="boutique">Boutique Fashion Store</option>
-                    <option value="bookstore">Cozy Bookstore & Cafe</option>
-                    <option value="law">Law Firm Advocacy</option>
-                    <option value="pharmacy">Pharmacy & Wellness Hub</option>
-                    <option value="autorepair">Auto Repair & Diagnostic</option>
-                    <option value="photography">Professional Photo Studio</option>
-                    <option value="grocery">Organic Grocery Delivery</option>
-                    <option value="software">Software Dev Agency</option>
-                    <option value="catering">Gourmet Events Catering</option>
-                    <option value="cleaning">Eco Cleaning Services</option>
-                    <option value="marketing">Digital Marketing Growth</option>
-                    <option value="tutoring">Tutoring & Tech Academy</option>
-                    <option value="florist">Flower Shop & Floral Design</option>
-                    <option value="construction">Roofing & House Building</option>
-                    <option value="music">Music School & Vocal coach</option>
-                    <option value="jewelry">Bespoke Jewelry & Fine Gold</option>
-                    <option value="optician">Optician Eyewear Clinic</option>
-                    <option value="coworking">Co-working Space & desks</option>
-                    <option value="travel">Travel Agency Tours</option>
-                    <option value="laundry">Dry Cleaning & Laundry</option>
-                    <option value="barber">Barber Lounge & Shave</option>
-                    <option value="architecture">Architecture & Space Design</option>
-                    <option value="veterinary">Veterinary Pet Care</option>
-                    <option value="handyman">Handyman Repairs & Installs</option>
-                    <option value="webdesign">Modern Web Design Studio</option>
-                    <option value="accounting">Accounting & GST Tax Advisory</option>
-                    <option value="nails">Nail Salon & Gel Art</option>
-                    <option value="security">Security Guard & CCTV</option>
-                    <option value="electrician">Electrician Wiring Repair</option>
-                    <option value="carwash">Foam Car Wash & Detailing</option>
-                    <option value="pestcontrol">Safe Eco Pest Control</option>
-                    <option value="bicycle">Bicycle Shop & Gear Tuning</option>
-                    <option value="yoga">Yoga Vinyasa Studio</option>
-                    <option value="language">Language School Lessons</option>
-                    <option value="events">Event Organizer & Design</option>
-                    <option value="artgallery">Fine Art Painting Gallery</option>
-                    <option value="dentrepair">Bumper Paint & Dent Repair</option>
-                    <option value="tailor">Bespoke Tailor Stitching</option>
-                    <option value="tattoo">Creative Tattoo Ink Studio</option>
-                    <option value="gardening">Landscaping & Garden Trim</option>
-                    <option value="crossfit">CrossFit Box & Lifting Gym</option>
-                    <option value="physio">Physiotherapy & Rehab Care</option>
-                  </select>
+                  />
                 </div>
               </div>
+            )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* STEP 5: Webpage Content & Catalog */}
+            {wizardStep === 5 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Layers style={{ color: 'hsl(var(--secondary-light))' }} size={22} />
+                  <h3 style={{ fontSize: '1.25rem' }}>Webpage Content & Catalog</h3>
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label htmlFor="theme-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Theme Accent</label>
-                  <select 
-                    id="theme-wizard"
-                    value={webTheme}
-                    onChange={(e) => setWebTheme(e.target.value)}
+                  <label htmlFor="about-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Detailed About Biography *</label>
+                  <textarea 
+                    id="about-wizard"
+                    rows={3}
+                    value={webAbout}
+                    onChange={(e) => setWebAbout(e.target.value)}
+                    placeholder="Describe your business operations, foundation history, and mission..."
                     style={{
-                      background: 'rgba(15,23,42,0.9)',
+                      background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
                       padding: '10px',
                       color: 'white',
                       fontSize: '0.85rem',
-                      outline: 'none'
+                      lineHeight: '1.4',
+                      resize: 'none'
                     }}
-                  >
-                    <option value="amber">Warm Amber (Cozy)</option>
-                    <option value="mint">Emerald Mint (Fresh)</option>
-                    <option value="breeze">Ocean Breeze (Clean)</option>
-                    <option value="cyber">Cyberpunk Dark (Vibrant Neon)</option>
-                    <option value="rose">Rose Quartz (Elegant)</option>
-                    <option value="lavender">Lavender Dream (Soft Slate)</option>
-                    <option value="crimson">Crimson Ruby (Bold Red)</option>
-                    <option value="midnight">Midnight Blue (Royal Indigo)</option>
-                    <option value="forest">Forest Moss (Deep Pine)</option>
-                    <option value="citrus">Citrus Gold (Vibrant Amber)</option>
-                    <option value="violet">Electric Violet (Neon Purple)</option>
-                    <option value="coffee">Coffee Cream (Earthy Brown)</option>
-                    <option value="aqua">Aqua Marine (Tropical Teal)</option>
-                    <option value="sunset">Sunset Pink (Magenta Gradient)</option>
-                    <option value="platinum">Platinum Slate (Metallic Silver)</option>
-                    <option value="solar">Solar Yellow (High Contrast Obsidian)</option>
-                    <option value="lime">Neon Lime (Toxic Space)</option>
-                    <option value="plum">Plum Velvet (Rich Aubergine)</option>
-                    <option value="royalgold">Royal Gold (Navy & Gold)</option>
-                    <option value="copper">Rusty Copper (Warm Earth)</option>
-                    <option value="vampire">Vampire Red (Pitch Black & Blood Red)</option>
-                    <option value="orchid">Orchid Petal (Soft Orchid Pink)</option>
-                    <option value="peach">Peach Sorbet (Terracotta Peach)</option>
-                    <option value="sage">Sage Garden (Muted Olive)</option>
-                    <option value="skyblue">Sky Blue (Sunny Cyan)</option>
-                    <option value="charcoal">Charcoal Ash (Pure Slate Gray)</option>
-                    <option value="ice">Ice Blizzard (Frosted Pale Blue)</option>
-                    <option value="banana">Banana Split (Creamy Pastel Yellow)</option>
-                    <option value="chocolate">Chocolate Truffle (Rich Dark Cocoa)</option>
-                    <option value="bubblegum">Bubblegum Pink (Sweet Candy Pink)</option>
-                    <option value="desert">Desert Sand (Warm Gold Sand)</option>
-                    <option value="tropical">Tropical Ocean (Deep Turquoise Marine)</option>
-                    <option value="magma">Magma Orange (Volcanic Lava)</option>
-                    <option value="electricindigo">Electric Indigo (Sleek Deep Indigo)</option>
-                    <option value="cyberneon">Neon Cyber (High-Volt Pink & Lime)</option>
-                    <option value="olive">Olive Grove (Rustic Deep Olive)</option>
-                    <option value="pistachio">Pistachio Green (Cozy Soft Sage)</option>
-                    <option value="coral">Coral Reef (Bright Sunset Orange)</option>
-                    <option value="teal">Teal Lagoon (Sleek Dark Teal)</option>
-                    <option value="glacier">Glacier Blue (Frosted Icy Blue)</option>
-                    <option value="deeppurple">Deep Purple (Midnight Purple Accent)</option>
-                    <option value="cherryblossom">Cherry Blossom (Warm Sakura Pink)</option>
-                    <option value="autumn">Autumn Leaf (Cozy Maple Orange)</option>
-                    <option value="mermaid">Mermaid Lagoon (Deep Ocean Aquamarine)</option>
-                    <option value="bronze">Steampunk Bronze (Rustic Dark Brass)</option>
-                    <option value="steel">Steel Metallic (Cool Graphite Slate)</option>
-                    <option value="bordeaux">Bordeaux Wine (Rich Deep Burgundy)</option>
-                    <option value="tangerine">Neon Tangerine (Vibrant Coal Orange)</option>
-                    <option value="mintchoc">Mint Chocolate (Sweet Mint Green)</option>
-                    <option value="zen">Zen Bamboo (Balanced Moss & Ochre)</option>
-                  </select>
+                  />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer', marginTop: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Custom Catalog Products / Services</span>
+                    <button 
+                      type="button" 
+                      onClick={handleAddProduct}
+                      style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.25)', color: 'hsl(var(--secondary-light))', borderRadius: '4px', padding: '3px 8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Plus size={12} /> Add Item
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '100px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {productsList.map((p, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <input 
+                          type="text" 
+                          value={p.name} 
+                          onChange={(e) => handleProductChange(idx, 'name', e.target.value)} 
+                          style={{ flex: 1.5, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.8rem', padding: '2px' }}
+                          placeholder="Item Name"
+                        />
+                        <input 
+                          type="text" 
+                          value={p.price} 
+                          onChange={(e) => handleProductChange(idx, 'price', e.target.value)} 
+                          style={{ flex: 0.8, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--secondary-light))', fontSize: '0.8rem', padding: '2px', fontWeight: 'bold' }}
+                          placeholder="Price"
+                        />
+                        <input 
+                          type="text" 
+                          value={p.desc} 
+                          onChange={(e) => handleProductChange(idx, 'desc', e.target.value)} 
+                          style={{ flex: 2, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--text-muted))', fontSize: '0.8rem', padding: '2px' }}
+                          placeholder="Description"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveProduct(idx)}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={enableChatBot} onChange={(e) => setEnableChatBot(e.target.checked)} />
-                    Embed Chat Bot Widget
+                    Embed AI Chatbot Widget on Site
                   </label>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <label htmlFor="headline-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Website Headline Banner</label>
-                <input 
-                  id="headline-wizard"
-                  type="text" 
-                  value={webTitle}
-                  onChange={(e) => setWebTitle(e.target.value)}
-                  placeholder="Website Heading"
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    color: 'white',
-                    fontSize: '0.85rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="subtitle-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Sub-headline Introduction</label>
-                <input 
-                  id="subtitle-wizard"
-                  type="text" 
-                  value={webSubtitle}
-                  onChange={(e) => setWebSubtitle(e.target.value)}
-                  placeholder="Website Subtitle"
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    color: 'white',
-                    fontSize: '0.85rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label htmlFor="about-wizard" style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Detailed About Biography</label>
-                <textarea 
-                  id="about-wizard"
-                  rows={3}
-                  value={webAbout}
-                  onChange={(e) => setWebAbout(e.target.value)}
-                  placeholder="Tell customers about your business..."
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    color: 'white',
-                    fontSize: '0.85rem',
-                    lineHeight: '1.4',
-                    resize: 'none'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>Custom Catalog Products / Services</span>
-                  <button 
-                    type="button" 
-                    onClick={handleAddProduct}
-                    style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.25)', color: 'hsl(var(--secondary-light))', borderRadius: '4px', padding: '3px 8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <Plus size={12} /> Add Item
-                  </button>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {productsList.map((p, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                      <input 
-                        type="text" 
-                        value={p.name} 
-                        onChange={(e) => handleProductChange(idx, 'name', e.target.value)} 
-                        style={{ flex: 1.5, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.8rem', padding: '2px' }}
-                        placeholder="Name"
-                      />
-                      <input 
-                        type="text" 
-                        value={p.price} 
-                        onChange={(e) => handleProductChange(idx, 'price', e.target.value)} 
-                        style={{ flex: 0.8, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--secondary-light))', fontSize: '0.8rem', padding: '2px', fontWeight: 'bold' }}
-                        placeholder="Price"
-                      />
-                      <input 
-                        type="text" 
-                        value={p.desc} 
-                        onChange={(e) => handleProductChange(idx, 'desc', e.target.value)} 
-                        style={{ flex: 2, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'hsl(var(--text-muted))', fontSize: '0.8rem', padding: '2px' }}
-                        placeholder="Description"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveProduct(idx)}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                      >
-                        <Trash size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Action buttons footer for step transitions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: '10px' }}>
-            {wizardStep === 1 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button 
-                  type="button"
-                  className="btn-primary" 
-                  onClick={handleConfigChange} 
-                  disabled={!bizName.trim()}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    fontSize: '0.9rem', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '8px',
-                    opacity: !bizName.trim() ? 0.6 : 1,
-                    cursor: !bizName.trim() ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  Deploy & Train AI Agent
-                </button>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', background: 'rgba(0,0,0,0.15)', borderRadius: '6px' }}>
-                    {botTrained ? (
-                      <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Check size={14} /> Model trained! Ready.
-                      </span>
-                    ) : (
-                      <span style={{ color: '#facc15', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        ⚠️ Deploy to train model.
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={!bizName.trim()}
-                    onClick={() => setWizardStep(2)}
-                    style={{ 
-                      flex: 1.2, 
-                      padding: '8px 16px', 
-                      fontSize: '0.85rem', 
-                      justifyContent: 'center', 
-                      background: 'rgba(255, 255, 255, 0.05)', 
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'white',
-                      boxShadow: 'none',
-                      opacity: !bizName.trim() ? 0.5 : 1,
-                      cursor: !bizName.trim() ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Setup Webpage →
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setWizardStep(1)}
-                  style={{ flex: 1, padding: '12px', fontSize: '0.85rem', justifyContent: 'center' }}
-                >
-                  ← Back to Bot
-                </button>
-                <button 
-                  type="button"
-                  className="btn-primary" 
-                  onClick={handleGenerateWebsite}
-                  disabled={!botTrained || webLoading || !slug.trim()}
-                  style={{ 
-                    flex: 1.8, 
-                    padding: '12px', 
-                    fontSize: '0.9rem', 
-                    background: (botTrained && slug.trim()) ? 'linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--primary)) 100%)' : '#334155', 
-                    border: 'none', 
-                    color: (botTrained && slug.trim()) ? 'white' : 'hsl(var(--text-muted))', 
-                    fontWeight: 'bold', 
-                    boxShadow: (botTrained && slug.trim()) ? '0 4px 15px rgba(6, 182, 212, 0.25)' : 'none',
-                    cursor: (botTrained && slug.trim()) ? 'pointer' : 'not-allowed',
-                    opacity: (botTrained && slug.trim()) ? 1 : 0.7,
-                    justifyContent: 'center'
-                  }}
-                >
-                  {!botTrained ? '🔒 Train Bot First' : (webLoading ? 'Creating Web...' : '✨ Launch Website')}
-                </button>
-              </div>
+          <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: '10px' }}>
+            {wizardStep > 1 && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setWizardStep(prev => prev - 1)}
+                style={{ flex: 1, padding: '12px', fontSize: '0.85rem', justifyContent: 'center' }}
+              >
+                ← Back
+              </button>
+            )}
+
+            {wizardStep === 1 && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!bizName.trim() || !slug.trim()}
+                onClick={() => setWizardStep(2)}
+                style={{ 
+                  flex: 1, 
+                  padding: '12px', 
+                  fontSize: '0.9rem', 
+                  justifyContent: 'center',
+                  opacity: (!bizName.trim() || !slug.trim()) ? 0.5 : 1,
+                  cursor: (!bizName.trim() || !slug.trim()) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next: AI Bot Settings →
+              </button>
+            )}
+
+            {wizardStep === 2 && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!systemPrompt.trim()}
+                onClick={() => setWizardStep(3)}
+                style={{ 
+                  flex: 1.5, 
+                  padding: '12px', 
+                  fontSize: '0.9rem', 
+                  justifyContent: 'center',
+                  opacity: !systemPrompt.trim() ? 0.5 : 1,
+                  cursor: !systemPrompt.trim() ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next: Sandbox Deploy →
+              </button>
+            )}
+
+            {wizardStep === 3 && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!botTrained}
+                onClick={() => setWizardStep(4)}
+                style={{ 
+                  flex: 1.5, 
+                  padding: '12px', 
+                  fontSize: '0.9rem', 
+                  justifyContent: 'center',
+                  opacity: !botTrained ? 0.5 : 1,
+                  cursor: !botTrained ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next: Design Layout →
+              </button>
+            )}
+
+            {wizardStep === 4 && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!webTitle.trim() || !webSubtitle.trim()}
+                onClick={() => setWizardStep(5)}
+                style={{ 
+                  flex: 1.5, 
+                  padding: '12px', 
+                  fontSize: '0.9rem', 
+                  justifyContent: 'center',
+                  opacity: (!webTitle.trim() || !webSubtitle.trim()) ? 0.5 : 1,
+                  cursor: (!webTitle.trim() || !webSubtitle.trim()) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next: Final Content →
+              </button>
+            )}
+
+            {wizardStep === 5 && (
+              <button 
+                type="button"
+                className="btn-primary" 
+                onClick={handleGenerateWebsite}
+                disabled={!botTrained || webLoading || !webAbout.trim()}
+                style={{ 
+                  flex: 2, 
+                  padding: '12px', 
+                  fontSize: '0.9rem', 
+                  background: (botTrained && webAbout.trim()) ? 'linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--primary)) 100%)' : '#334155', 
+                  border: 'none', 
+                  color: (botTrained && webAbout.trim()) ? 'white' : 'hsl(var(--text-muted))', 
+                  fontWeight: 'bold', 
+                  boxShadow: (botTrained && webAbout.trim()) ? '0 4px 15px rgba(6, 182, 212, 0.25)' : 'none',
+                  cursor: (botTrained && webAbout.trim()) ? 'pointer' : 'not-allowed',
+                  opacity: (botTrained && webAbout.trim()) ? 1 : 0.7,
+                  justifyContent: 'center'
+                }}
+              >
+                {webLoading ? 'Creating Web...' : '✨ Launch Website'}
+              </button>
             )}
           </div>
         </div>

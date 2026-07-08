@@ -393,6 +393,7 @@ a {
 
 .main-content {
   flex: 1;
+  padding-top: 75px; /* Offset for fixed header navigation bar */
 }
 
 .section-padding {
