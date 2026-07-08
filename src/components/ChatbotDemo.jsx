@@ -579,6 +579,13 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
   const [productsList, setProductsList] = useState([]);
   const [enableChatBot, setEnableChatBot] = useState(true);
 
+  // Customizations for Website layout & Payments settings
+  const [bizPhone, setBizPhone] = useState("");
+  const [bizHours, setBizHours] = useState("Monday - Friday: 9:00 AM - 6:00 PM\nSaturday: 10:00 AM - 4:00 PM\nSunday: Closed");
+  const [enablePayments, setEnablePayments] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState("");
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+
   const handleToneChange = (newTone) => {
     setAgentTone(newTone);
     setBotTrained(false);
@@ -649,6 +656,11 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       subtitle: webSubtitle,
       about: webAbout,
       products: productsList,
+      bizPhone,
+      bizHours,
+      enablePayments,
+      razorpayKeyId,
+      razorpayKeySecret,
       botConfig: {
         bizName,
         systemPrompt,
