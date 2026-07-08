@@ -3,7 +3,7 @@ import { MessageSquare, X, Send, Bot, RefreshCw, Volume2 } from 'lucide-react';
 import { db, isFirebaseConfigured } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-export default function FloatingBotWidget({ bizName, botConfig, themeColors }) {
+export default function FloatingBotWidget({ bizName, botConfig, themeColors, ownerEmail }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const [messages, setMessages] = useState([]);
@@ -262,7 +262,8 @@ export default function FloatingBotWidget({ bizName, botConfig, themeColors }) {
       phone: phone || 'N/A',
       note: getNoteSummary(chatConcat),
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      source: `${bizName} Chatbot`
+      source: `${bizName} Chatbot`,
+      ownerEmail: ownerEmail || 'anonymous'
     };
 
     console.log('[LEAD CAPTURED] Saving to Firestore:', newLead);

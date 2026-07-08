@@ -699,7 +699,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
               phone: checkoutForm.phone,
               note: `💰 PAID ORDER: Purchased "${checkoutProduct.name}" for ${checkoutProduct.price}. TxRef: ${response.razorpay_payment_id || 'pay_simulated'}`,
               date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-              source: `Razorpay Payment /${slug}`
+              source: `Razorpay Payment /${slug}`,
+              ownerEmail: siteConfig?.ownerEmail || 'anonymous'
             };
 
             if (isFirebaseConfigured && db) {
@@ -873,7 +874,8 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
       phone: formData.phone || 'N/A',
       note: formData.msg || `Contact Form submission on /${slug}`,
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      source: `Website /${slug}`
+      source: `Website /${slug}`,
+      ownerEmail: siteConfig?.ownerEmail || 'anonymous'
     };
 
     // PUSH LEAD TO FIREBASE
@@ -1285,6 +1287,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
           bizName={siteConfig.bizName}
           botConfig={siteConfig.botConfig}
           themeColors={themeVars}
+          ownerEmail={siteConfig?.ownerEmail || 'anonymous'}
         />
       )}
 

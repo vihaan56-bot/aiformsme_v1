@@ -638,7 +638,8 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
         selectedModel,
         apiKey
       },
-      enableBot: enableChatBot
+      enableBot: enableChatBot,
+      ownerEmail: currentUser?.email || 'anonymous'
     };
 
     // Save to Firebase Firestore
@@ -702,12 +703,14 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
   const [collectedData, setCollectedData] = useState({ name: '', email: '', phone: '', note: '' });
   const [leadsList, setLeadsList] = useState([]);
 
-  // Sync leads from Firebase Firestore or local storage fallback
+  // Sync leads from Firebase Firestore or local storage fallback (filtered by currentUser)
   useEffect(() => {
     const syncLocalLeads = () => {
       try {
         const stored = JSON.parse(localStorage.getItem('aiformsme_leads') || '[]');
-        setLeadsList(stored);
+        // Filter by logged-in user email
+        const filtered = stored.filter(lead => lead.ownerEmail === currentUser?.email);
+        setLeadsList(filtered);
       } catch (err) {
         console.error(err);
       }
@@ -722,7 +725,11 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
         unsubscribe = onSnapshot(q, (snapshot) => {
           const list = [];
           snapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() });
+            const data = docSnap.data();
+            // Filter Firestore list elements by logged-in user email for privacy
+            if (data.ownerEmail === currentUser?.email) {
+              list.push({ id: docSnap.id, ...data });
+            }
           });
           setLeadsList(list);
         }, (err) => {
@@ -739,20 +746,26 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       if (unsubscribe) unsubscribe();
       window.removeEventListener('aiformsme_lead_added', syncLocalLeads);
     };
-  }, []);
+  }, [currentUser]);
 
   const saveCapturedLead = async (lead) => {
+    // Enrich lead data with the active operator's email identity
+    const enrichedLead = {
+      ...lead,
+      ownerEmail: lead.ownerEmail || currentUser?.email || 'anonymous'
+    };
+
     if (isFirebaseConfigured && db) {
       try {
-        await addDoc(collection(db, 'leads'), lead);
-        console.log('[FIREBASE] Lead captured & saved:', lead.name);
+        await addDoc(collection(db, 'leads'), enrichedLead);
+        console.log('[FIREBASE] Lead captured & saved:', enrichedLead.name);
       } catch (err) {
         console.error('[FIREBASE ERROR] Failed saving lead:', err);
       }
     }
     try {
       const stored = JSON.parse(localStorage.getItem('aiformsme_leads') || '[]');
-      localStorage.setItem('aiformsme_leads', JSON.stringify([lead, ...stored]));
+      localStorage.setItem('aiformsme_leads', JSON.stringify([enrichedLead, ...stored]));
       window.dispatchEvent(new Event('aiformsme_lead_added'));
     } catch (err) {
       console.error(err);
