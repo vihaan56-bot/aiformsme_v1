@@ -137,8 +137,63 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
             onClose();
           }, 1000);
         } catch (err) {
-          console.error('[FIREBASE LOGIN ERROR]:', err);
-          setError('Invalid email or password in Firebase Auth.');
+          console.warn('[FIREBASE LOGIN FAILED] Attempting legacy auto-migration...', err);
+          
+          // Try auto-migration: check if user exists in legacy database
+          let legacyUser = null;
+          try {
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: emailKey, password })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              legacyUser = data.user;
+            }
+          } catch (apiErr) {
+            console.warn('Legacy API unavailable during login fallback:', apiErr);
+          }
+
+          // If not in API, check local mirror
+          if (!legacyUser) {
+            try {
+              const storedUsers = JSON.parse(localStorage.getItem('aiformsme_users_db') || '{}');
+              const match = storedUsers[emailKey];
+              if (match && match.password === password) {
+                legacyUser = { name: match.name, email: emailKey };
+              }
+            } catch (e) {}
+          }
+
+          // If user matches legacy credentials, register them silently in Firebase Auth!
+          if (legacyUser) {
+            try {
+              setSuccessMsg('Migrating your account to secure Firebase Auth...');
+              const userCredential = await createUserWithEmailAndPassword(auth, emailKey, password);
+              await updateProfile(userCredential.user, { displayName: legacyUser.name });
+              const token = await userCredential.user.getIdToken();
+
+              const userData = {
+                uid: userCredential.user.uid,
+                email: emailKey,
+                name: legacyUser.name,
+                role: 'Client Operator',
+                token: token
+              };
+
+              setSuccessMsg('Account successfully migrated! Logging in...');
+              setTimeout(() => {
+                onLoginSuccess(userData);
+                onClose();
+              }, 1000);
+              return;
+            } catch (signupErr) {
+              console.error('[AUTO MIGRATION SIGNUP FAILED]:', signupErr);
+            }
+          }
+
+          setError('Invalid email or password. If this is your first time logging in since the upgrade, click "Register" to create your secure global account.');
         } finally {
           setLoading(false);
         }
