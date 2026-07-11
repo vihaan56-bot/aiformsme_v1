@@ -20,16 +20,16 @@ export default function Hero({ onNavigate }) {
               The AI Revolution for Small Businesses
             </div>
             <h1 style={{ fontSize: 'calc(2.2rem + 1.8vw)', lineHeight: '1.15', marginBottom: '16px' }}>
-              Supercharge Your <span className="gradient-text-color">MSME</span> with Custom AI Tools
+              Hire an <span className="gradient-text-color">AI Employee</span> for Your Small Business
             </h1>
             <p className="gradient-text" style={{ fontSize: '1.2rem', color: 'hsl(var(--text-secondary))', maxWidth: '600px', lineHeight: '1.6' }}>
-              Unlock enterprise-grade AI capabilities built specifically for small businesses. Drive customer leads, capture requirements, and launch customized websites without expensive developers.
+              Answer customer enquiries, capture and score leads, follow up prospects, create social marketing content, and track payments—all with one dedicated AI employee tailored for Indian MSMEs.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px' }}>
-            <button className="btn-primary" onClick={() => onNavigate('demos')}>
-              Try Free Demos <ArrowRight size={18} />
+            <button className="btn-primary" onClick={() => onNavigate('dashboard')}>
+              Get Started Free <ArrowRight size={18} />
             </button>
             <button className="btn-secondary" onClick={() => onNavigate('wizard')}>
               Get AI Roadmap

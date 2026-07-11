@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Sparkles, LayoutDashboard, Terminal, BadgeDollarSign, Compass, ArrowRight } from 'lucide-react';
+import { Bot, Sparkles, LayoutDashboard, Terminal, BadgeDollarSign, Compass, ArrowRight, Users, MessageSquare, Megaphone, Settings, LogOut, Loader } from 'lucide-react';
 import Hero from './components/Hero';
 import ServiceCatalog from './components/ServiceCatalog';
 import ChatbotDemo from './components/ChatbotDemo';
@@ -13,8 +13,20 @@ import GeneratedWebsite from './components/GeneratedWebsite';
 import DonationPanel from './components/DonationPanel';
 import SEOLandingPage from './components/SEOLandingPage';
 import useSEO from './hooks/useSEO';
-import { db, isFirebaseConfigured } from './firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+
+// Onboarding & CommandCenter Sub-modules
+import OnboardingFlow from './components/OnboardingFlow';
+import CommandCenter from './components/CommandCenter';
+import LeadsManager from './components/LeadsManager';
+import FollowUpAgent from './components/FollowUpAgent';
+import SocialMediaStudio from './components/SocialMediaStudio';
+import ReviewResponder from './components/ReviewResponder';
+import InvoiceAssistant from './components/InvoiceAssistant';
+
+import { db, auth, isFirebaseConfigured } from './firebase';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('home'); // home, demos, pricing, dashboard, wizard, landing
@@ -31,9 +43,93 @@ export default function App() {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('aiformsme_user') || 'null'));
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Business Profile & Command Center state
+  const [activeBusiness, setActiveBusiness] = useState(null);
+  const [activeDashTab, setActiveDashTab] = useState('command_center');
+  const [promoPrefill, setPromoPrefill] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [businessLoaded, setBusinessLoaded] = useState(false);
+
   // Free Trial State
   const [showPromoBanner, setShowPromoBanner] = useState(true);
   const [selectedTrial, setSelectedTrial] = useState(null);
+
+  // Responsive hook
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          firebaseUser.getIdToken().then(token => {
+            const userData = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+              role: 'Client Operator',
+              token: token
+            };
+            setUser(userData);
+            localStorage.setItem('aiformsme_user', JSON.stringify(userData));
+          });
+        } else {
+          const localUser = localStorage.getItem('aiformsme_user');
+          if (localUser && !localUser.includes('session-local-') && !localUser.includes('session-jwt-')) {
+            setUser(null);
+            localStorage.removeItem('aiformsme_user');
+          }
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, []);
+
+  // Load Business Profile
+  useEffect(() => {
+    if (!user) {
+      setActiveBusiness(null);
+      setBusinessLoaded(false);
+      return;
+    }
+
+    async function loadBusinessProfile() {
+      setBusinessLoaded(false);
+      try {
+        let foundBiz = null;
+        if (db) {
+          const q = query(collection(db, 'businesses'), where('ownerId', '==', user.uid || user.email));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const docRef = snap.docs[0];
+            foundBiz = { id: docRef.id, ...docRef.data() };
+          }
+        }
+        
+        if (!foundBiz) {
+          const local = localStorage.getItem('aiformsme_business_config');
+          if (local) {
+            const parsed = JSON.parse(local);
+            if (parsed.ownerId === (user.uid || user.email)) {
+              foundBiz = parsed;
+            }
+          }
+        }
+
+        setActiveBusiness(foundBiz);
+      } catch (err) {
+        console.error('Error fetching business configuration:', err);
+      } finally {
+        setBusinessLoaded(true);
+      }
+    }
+
+    loadBusinessProfile();
+  }, [user]);
 
   const handleChooseTrial = (serviceId) => {
     setSelectedTrial(serviceId);
@@ -52,8 +148,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (auth) {
+      signOut(auth).catch(err => console.error(err));
+    }
     setUser(null);
     localStorage.removeItem('aiformsme_user');
+    localStorage.removeItem('aiformsme_business_config');
+    setActiveBusiness(null);
   };
 
   const handleAddLead = (newLead) => {
@@ -426,8 +527,386 @@ export default function App() {
         )}
 
         {currentTab === 'dashboard' && (
-          <section className="section-padding">
-            <Dashboard leadsCount={leadsCount} />
+          <section className="section-padding" style={{ paddingBottom: isMobile ? '90px' : '40px' }}>
+            {!user ? (
+              <div className="glass-panel animate-slide-up" style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', margin: '40px auto' }}>
+                <Bot size={48} style={{ color: 'hsl(var(--primary-light))', marginBottom: '16px' }} />
+                <h3 style={{ fontSize: '1.4rem', fontWeight: '700', marginBottom: '10px' }}>Access your AI Command Center</h3>
+                <p style={{ fontSize: '0.88rem', color: 'hsl(var(--text-muted))', marginBottom: '24px' }}>
+                  Sign in or register to set up your AI employee, capture leads, manage payment reminders, and see analytics.
+                </p>
+                <button className="btn-primary" onClick={() => setShowAuthModal(true)} style={{ width: '100%', justifyContent: 'center' }}>
+                  Sign In to Workspace
+                </button>
+              </div>
+            ) : !businessLoaded ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '16px' }}>
+                <Loader className="animate-spin" size={32} style={{ color: 'hsl(var(--primary))' }} />
+                <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Retrieving business workspace...</span>
+              </div>
+            ) : !activeBusiness ? (
+              <OnboardingFlow currentUser={user} onComplete={(biz) => setActiveBusiness(biz)} />
+            ) : (
+              <div className="dashboard-grid-layout" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: '30px', alignItems: 'stretch' }}>
+                
+                {/* Desktop Sidebar Navigation */}
+                {!isMobile && (
+                  <aside className="glass-panel" style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', justifySelf: 'stretch', gap: '8px', background: 'rgba(5, 8, 20, 0.45)', height: 'fit-content' }}>
+                    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <h4 style={{ fontSize: '0.82rem', fontWeight: '700', color: 'hsl(var(--secondary-light))', textTransform: 'uppercase', margin: 0 }}>
+                        {activeBusiness.businessName}
+                      </h4>
+                      <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>AI Operator Workspace</span>
+                    </div>
+
+                    <button 
+                      onClick={() => setActiveDashTab('command_center')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'command_center' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <LayoutDashboard size={16} /> Command Center
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('leads')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'leads' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Users size={16} /> Leads Manager
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('followups')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'followups' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <MessageSquare size={16} /> Follow-ups
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('marketing')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'marketing' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Sparkles size={16} /> AI Marketing Studio
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('reviews')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'reviews' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'reviews' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Terminal size={16} /> Review Responder
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('payments')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'payments' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'payments' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <BadgeDollarSign size={16} /> Payments Tracker
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('website')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'website' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'website' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s',
+                        borderTop: '1px solid rgba(255,255,255,0.05)',
+                        marginTop: '8px',
+                        paddingTop: '12px'
+                      }}
+                    >
+                      <Bot size={16} /> AI Website Builder
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('wizard')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'wizard' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'wizard' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Compass size={16} /> Bottleneck Audit
+                    </button>
+
+                    <button 
+                      onClick={() => setActiveDashTab('settings')}
+                      style={{
+                        padding: '10px 12px',
+                        background: activeDashTab === 'settings' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: activeDashTab === 'settings' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Settings size={16} /> Onboarding Settings
+                    </button>
+
+                  </aside>
+                )}
+
+                {/* Dashboard Workspace panel */}
+                <div className="dashboard-view-panel" style={{ flex: 1 }}>
+                  {activeDashTab === 'command_center' && (
+                    <CommandCenter 
+                      activeBusiness={activeBusiness} 
+                      onNavigateToTab={(tab, data) => {
+                        setActiveDashTab(tab);
+                        if (data) setPromoPrefill(data);
+                      }}
+                      userToken={user?.token}
+                    />
+                  )}
+
+                  {activeDashTab === 'leads' && (
+                    <LeadsManager 
+                      activeBusiness={activeBusiness} 
+                      userToken={user?.token}
+                      onLeadUpdate={() => {}}
+                    />
+                  )}
+
+                  {activeDashTab === 'followups' && (
+                    <FollowUpAgent 
+                      activeBusiness={activeBusiness} 
+                      userToken={user?.token}
+                    />
+                  )}
+
+                  {activeDashTab === 'marketing' && (
+                    <SocialMediaStudio 
+                      activeBusiness={activeBusiness} 
+                      userToken={user?.token}
+                      prefillData={promoPrefill}
+                    />
+                  )}
+
+                  {activeDashTab === 'reviews' && (
+                    <ReviewResponder 
+                      activeBusiness={activeBusiness} 
+                      userToken={user?.token}
+                    />
+                  )}
+
+                  {activeDashTab === 'payments' && (
+                    <InvoiceAssistant 
+                      activeBusiness={activeBusiness} 
+                      userToken={user?.token}
+                      onInvoiceChange={() => {}}
+                    />
+                  )}
+
+                  {activeDashTab === 'website' && (
+                    <div className="glass-panel" style={{ padding: '30px', background: 'rgba(10, 15, 30, 0.4)' }}>
+                      <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} />
+                    </div>
+                  )}
+
+                  {activeDashTab === 'wizard' && (
+                    <ConsultationWizard />
+                  )}
+
+                  {activeDashTab === 'settings' && (
+                    <div className="glass-panel animate-slide-up" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0 }}>AI Employee Configuration</h3>
+                      <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Modify your business profile settings and active AI Employee configurations below.</p>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div><strong>Business Name:</strong> {activeBusiness.businessName}</div>
+                        <div style={{ marginTop: '8px' }}><strong>Category:</strong> {activeBusiness.businessType}</div>
+                        <div style={{ marginTop: '8px' }}><strong>Active AI Responsibilities:</strong>
+                          <ul style={{ paddingLeft: '20px', marginTop: '6px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+                            {activeBusiness.aiResponsibilities?.map(r => <li key={r}>{r.replace('_', ' ')}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <button 
+                        className="btn-outline" 
+                        onClick={() => {
+                          if (confirm('Re-running onboarding will let you update your business details. Proceed?')) {
+                            setActiveBusiness(null);
+                          }
+                        }}
+                        style={{ alignSelf: 'flex-start' }}
+                      >
+                        Reset Profile & Re-run Onboarding
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            )}
+
+            {/* Mobile Bottom Sticky Navigation Overlay */}
+            {isMobile && user && activeBusiness && (
+              <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                backgroundColor: 'rgba(10, 15, 30, 0.95)',
+                backdropFilter: 'blur(16px)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, 1fr)',
+                padding: '8px 0',
+                zIndex: 9999,
+                boxShadow: '0 -4px 20px rgba(0,0,0,0.5)'
+              }}>
+                <button 
+                  onClick={() => setActiveDashTab('command_center')}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                >
+                  <LayoutDashboard size={18} />
+                  <span>Center</span>
+                </button>
+                <button 
+                  onClick={() => setActiveDashTab('leads')}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                >
+                  <Users size={18} />
+                  <span>Leads</span>
+                </button>
+                <button 
+                  onClick={() => setActiveDashTab('marketing')}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                >
+                  <Sparkles size={18} />
+                  <span>AI Studio</span>
+                </button>
+                <button 
+                  onClick={() => setActiveDashTab('followups')}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                >
+                  <MessageSquare size={18} />
+                  <span>Followup</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setActiveDashTab(prev => 
+                      prev === 'website' ? 'payments' : prev === 'payments' ? 'settings' : prev === 'settings' ? 'website' : 'website'
+                    );
+                  }}
+                  style={{ background: 'none', border: 'none', color: ['website', 'payments', 'settings'].includes(activeDashTab) ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                >
+                  <Settings size={18} />
+                  <span>{['website', 'payments', 'settings'].includes(activeDashTab) ? activeDashTab.charAt(0).toUpperCase() + activeDashTab.slice(1) : 'More'}</span>
+                </button>
+              </div>
+            )}
+
           </section>
         )}
 

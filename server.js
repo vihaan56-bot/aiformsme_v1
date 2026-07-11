@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import fs from 'fs';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 dotenv.config();
 
@@ -15,6 +17,205 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Initialize Firebase Admin SDK for JWT verification
+if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  try {
+    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+    // Replace double-quoted escaped newlines with actual newlines
+    const privateKey = rawPrivateKey.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1');
+    
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey
+      })
+    });
+    console.log('[FIREBASE ADMIN] Initialized Firebase Admin SDK successfully!');
+  } catch (err) {
+    console.error('[FIREBASE ADMIN ERROR] Failed to initialize Admin SDK:', err);
+  }
+} else {
+  console.warn('[FIREBASE ADMIN] Missing credentials in .env. SDK auth verification will default to fallback mode.');
+}
+
+// Middleware: Authenticate and decode Firebase ID Token
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Authorization token is required.' });
+  }
+
+  // Fallback for mock/local dashboard sessions without active network config
+  if (token.startsWith('session-local-') || token.startsWith('session-jwt-')) {
+    req.user = { uid: 'mock_uid_' + token.split('-').pop() };
+    return next();
+  }
+
+  try {
+    if (getApps().length > 0) {
+      const decodedToken = await getAuth().verifyIdToken(token);
+      req.user = { uid: decodedToken.uid };
+      return next();
+    } else {
+      // Local fallback in development when SDK not active
+      req.user = { uid: 'sandbox_default_uid' };
+      return next();
+    }
+  } catch (error) {
+    console.error('[AUTH ERROR] Token verification failed:', error.message);
+    return res.status(403).json({ success: false, message: 'Invalid or expired authentication token.' });
+  }
+};
+
+// Lightweight In-Memory Rate Limiting Middleware
+const ipRequestCounts = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 30;
+
+const rateLimiter = (req, res, next) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const now = Date.now();
+  
+  if (!ipRequestCounts.has(ip)) {
+    ipRequestCounts.set(ip, []);
+  }
+  
+  const timestamps = ipRequestCounts.get(ip).filter(ts => now - ts < RATE_LIMIT_WINDOW);
+  timestamps.push(now);
+  ipRequestCounts.set(ip, timestamps);
+  
+  if (timestamps.length > MAX_REQUESTS_PER_MINUTE) {
+    return res.status(429).json({ success: false, message: 'Too many requests. Please try again in a minute.' });
+  }
+  
+  next();
+};
+
+// Helper: Secure API Call to OpenRouter
+const generateAIText = async (systemPrompt, userPrompt, maxTokens = 400) => {
+  const apiKey = process.env.VITE_OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('AI API Key is missing on the server.');
+  }
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://aiformsme.co.in',
+        'X-Title': 'AIForMSME Command Center'
+      },
+      body: JSON.stringify({
+        model: 'openrouter/free',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API failed: ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  } catch (err) {
+    console.error('[AI SERVICE ERROR] Failed to fetch completion:', err);
+    throw err;
+  }
+};
+
+// Route: Strict Task-Based AI Generation
+app.post('/api/ai/generate', authenticateToken, rateLimiter, async (req, res) => {
+  const { taskType, businessId, input } = req.body;
+
+  if (!taskType || !businessId || !input) {
+    return res.status(400).json({ success: false, message: 'Missing required parameters: taskType, businessId, input.' });
+  }
+
+  const allowedTasks = ['REVIEW_REPLY', 'FOLLOW_UP', 'SOCIAL_CONTENT', 'BUSINESS_INSIGHT', 'PAYMENT_REMINDER'];
+  if (!allowedTasks.includes(taskType)) {
+    return res.status(400).json({ success: false, message: 'Unsupported taskType.' });
+  }
+
+  // Schema Validation
+  if (taskType === 'REVIEW_REPLY') {
+    if (input.rating === undefined || !input.review) {
+      return res.status(400).json({ success: false, message: 'Missing rating or review for REVIEW_REPLY.' });
+    }
+  } else if (taskType === 'FOLLOW_UP') {
+    if (!input.customerName || !input.reason) {
+      return res.status(400).json({ success: false, message: 'Missing customerName or reason for FOLLOW_UP.' });
+    }
+  } else if (taskType === 'SOCIAL_CONTENT') {
+    if (!input.offer || !input.product) {
+      return res.status(400).json({ success: false, message: 'Missing offer or product for SOCIAL_CONTENT.' });
+    }
+  } else if (taskType === 'PAYMENT_REMINDER') {
+    if (!input.customerName || !input.invoiceNumber || !input.amount || !input.dueDate) {
+      return res.status(400).json({ success: false, message: 'Missing customerName, invoiceNumber, amount, or dueDate for PAYMENT_REMINDER.' });
+    }
+  }
+
+  try {
+    let systemPrompt = '';
+    let userPrompt = '';
+    let maxTokens = 400;
+
+    if (taskType === 'REVIEW_REPLY') {
+      systemPrompt = "You are a polite, professional, and empathetic reputation manager for a small business. Draft a response to a customer review. Keep it under 3-4 sentences. Do not mention any placeholder names or codes.";
+      userPrompt = `Customer Name: ${input.customerName || 'Customer'}\nRating: ${input.rating} stars out of 5\nReview: "${input.review}"\nTone: ${input.tone || 'Friendly'}\nDraft the response directly, without introductions or quotation marks.`;
+    } else if (taskType === 'FOLLOW_UP') {
+      systemPrompt = "You are a friendly customer success assistant. Draft a direct, personalized follow-up message for a lead. The message must be extremely short (under 2 sentences), warm, and include natural emojis. Focus on booking a callback or completing their interest. Do not include subject lines or formal headers.";
+      userPrompt = `Customer Name: ${input.customerName}\nReason for follow-up: ${input.reason}\nWrite the message text directly.`;
+    } else if (taskType === 'SOCIAL_CONTENT') {
+      systemPrompt = "You are a social media copywriter for small businesses. Generate promotional content based on an offer. You must output a JSON object containing four keys: 'instagram' (include brief text and 3-5 relevant hashtags), 'whatsapp' (conversational with emojis), 'facebook' (engaging description), and 'poster' (a short header and subtitle). Output ONLY valid raw JSON, no markdown formatting blocks, no ticks.";
+      userPrompt = `Business Name: ${input.businessName || 'Our Business'}\nOffer: ${input.offer}\nProduct/Service: ${input.product}\nDiscount: ${input.discount || 'None'}\nTarget Audience: ${input.targetAudience || 'General'}\nTone: ${input.tone || 'Excited'}`;
+      maxTokens = 600;
+    } else if (taskType === 'BUSINESS_INSIGHT') {
+      systemPrompt = "You are a business consultant analyzing operations data for a small shop/service. Based on the provided summary of recent customer interactions, give ONE actionable recommendation/insight for the business owner. The response must be a single, short sentence under 25 words (e.g., 'Demand for birthday cakes is high this week; consider offering a custom cake discount to capture leads').";
+      userPrompt = `Operational Data Summary:\n- Leads Captured: ${input.leadsCount || 0}\n- Active Conversations: ${input.conversationsCount || 0}\n- Bookings/Appointments: ${input.bookingsCount || 0}\n- Top customer interests and inquiries: ${input.interestsText || 'General inquiries'}\nProvide the insight text directly.`;
+    } else if (taskType === 'PAYMENT_REMINDER') {
+      systemPrompt = "You are a polite collections assistant. Draft a gentle, professional payment reminder for an invoice. The message must be under 3 sentences, extremely polite, and suitable for sending via WhatsApp or SMS. Do not use placeholders or brackets.";
+      userPrompt = `Customer Name: ${input.customerName}\nInvoice Number: ${input.invoiceNumber}\nAmount: ${input.amount}\nDue Date: ${input.dueDate}\nWrite the reminder message directly.`;
+    }
+
+    const aiText = await generateAIText(systemPrompt, userPrompt, maxTokens);
+
+    if (taskType === 'SOCIAL_CONTENT') {
+      try {
+        let cleanedText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanedText);
+        return res.json({ success: true, text: aiText, parsed });
+      } catch (jsonErr) {
+        console.warn('Failed to parse model JSON directly, returning text:', jsonErr);
+        const fallbackParsed = {
+          instagram: aiText,
+          whatsapp: aiText,
+          facebook: aiText,
+          poster: "Special Promotion / Offer Available Now!"
+        };
+        return res.json({ success: true, text: aiText, parsed: fallbackParsed });
+      }
+    }
+
+    return res.json({ success: true, text: aiText });
+
+  } catch (error) {
+    console.error(`[AI ERROR ${taskType}]:`, error);
+    return res.status(500).json({ success: false, message: "We couldn't generate the reply right now. Please try again." });
+  }
+});
 
 // Load persistent users store from users.json file (so restarts don't erase accounts)
 let usersStore = {};
@@ -51,7 +252,6 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
   }
 
-  // Create new user profile in memory and file database
   usersStore[emailKey] = {
     name: name.trim(),
     email: emailKey,
@@ -125,7 +325,6 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   const razorpayInstance = getRazorpayInstance(razorpayKeyId, razorpayKeySecret);
   if (!razorpayInstance) {
-    // Return simulated sandbox payload
     return res.json({
       success: true,
       simulated: true,
@@ -137,7 +336,7 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   try {
     const options = {
-      amount: Math.round(amount * 100), // convert to paise
+      amount: Math.round(amount * 100),
       currency: currency,
       receipt: receipt
     };
