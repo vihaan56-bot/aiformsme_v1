@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, User, ShieldCheck, X, RefreshCw, AlertCircle, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
+import { auth, isFirebaseConfigured } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 export default function AuthPortal({ onClose, onLoginSuccess }) {
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
@@ -36,7 +38,36 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
     setLoading(true);
 
     if (mode === 'signup') {
-      // 1. Save to client-side localStorage mirror database first
+      // 1. Firebase Auth Signup (when active)
+      if (isFirebaseConfigured && auth) {
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, emailKey, password);
+          await updateProfile(userCredential.user, { displayName: name.trim() });
+          const token = await userCredential.user.getIdToken();
+          
+          const userData = {
+            uid: userCredential.user.uid,
+            email: emailKey,
+            name: name.trim(),
+            role: 'Client Operator',
+            token: token
+          };
+
+          setSuccessMsg('Account registered successfully via Firebase Auth!');
+          setTimeout(() => {
+            onLoginSuccess(userData);
+            onClose();
+          }, 1000);
+        } catch (err) {
+          console.error('[FIREBASE SIGNUP ERROR]:', err);
+          setError(err.message || 'Registration failed in Firebase Auth.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Legacy fallback: Save to client-side localStorage mirror database first
       try {
         const storedUsers = JSON.parse(localStorage.getItem('aiformsme_users_db') || '{}');
         storedUsers[emailKey] = {
@@ -49,7 +80,7 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
         console.error('LocalStorage signup mirror failed:', err);
       }
 
-      // 2. Call backend register API
+      // Legacy fallback: Call backend register API
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
@@ -69,7 +100,6 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
           onClose();
         }, 1000);
       } catch (err) {
-        // If API fails or is unreachable, fallback to client-side mock registration success
         console.warn('API signup failed or server offline. Authenticating via local mirror:', err);
         setSuccessMsg('Operator workspace created locally!');
         const mockUser = {
@@ -87,9 +117,37 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
       }
     } else {
       // mode === 'login'
+      // 1. Firebase Auth Login (when active)
+      if (isFirebaseConfigured && auth) {
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, emailKey, password);
+          const token = await userCredential.user.getIdToken();
+          
+          const userData = {
+            uid: userCredential.user.uid,
+            email: emailKey,
+            name: userCredential.user.displayName || emailKey.split('@')[0],
+            role: 'Client Operator',
+            token: token
+          };
+
+          setSuccessMsg('Welcome back! Logged in via Firebase Auth.');
+          setTimeout(() => {
+            onLoginSuccess(userData);
+            onClose();
+          }, 1000);
+        } catch (err) {
+          console.error('[FIREBASE LOGIN ERROR]:', err);
+          setError('Invalid email or password in Firebase Auth.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       let successData = null;
 
-      // 1. Try backend login API
+      // Legacy fallback: Try backend login API
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
@@ -118,7 +176,7 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
         return;
       }
 
-      // 2. Fallback: Authenticate via client-side localStorage mirror
+      // Legacy fallback: Authenticate via client-side localStorage mirror
       try {
         const storedUsers = JSON.parse(localStorage.getItem('aiformsme_users_db') || '{}');
         const localUser = storedUsers[emailKey];
@@ -141,7 +199,6 @@ export default function AuthPortal({ onClose, onLoginSuccess }) {
         console.error('LocalStorage match check failed:', err);
       }
 
-      // 3. Fallback: If both fail, show error
       setError('Invalid email address or password. Please try again.');
       setLoading(false);
     }
