@@ -596,20 +596,25 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin, on
     try {
       let list = [];
       if (isFirebaseConfigured && db) {
-        const q = query(collection(db, 'websites'), where('ownerId', '==', currentUser.uid));
-        const snap = await getDocs(q);
-        snap.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() });
-        });
-
-        // Also query ownerEmail for backward compatibility
-        const qEmail = query(collection(db, 'websites'), where('ownerEmail', '==', currentUser.email));
-        const snapEmail = await getDocs(qEmail);
-        snapEmail.forEach(docSnap => {
-          if (!list.some(item => item.id === docSnap.id)) {
+        // Query by ownerId if UID is defined
+        if (currentUser.uid) {
+          const qUid = query(collection(db, 'websites'), where('ownerId', '==', currentUser.uid));
+          const snapUid = await getDocs(qUid);
+          snapUid.forEach(docSnap => {
             list.push({ id: docSnap.id, ...docSnap.data() });
-          }
-        });
+          });
+        }
+
+        // Query by ownerEmail if email is defined
+        if (currentUser.email) {
+          const qEmail = query(collection(db, 'websites'), where('ownerEmail', '==', currentUser.email));
+          const snapEmail = await getDocs(qEmail);
+          snapEmail.forEach(docSnap => {
+            if (!list.some(item => item.id === docSnap.id)) {
+              list.push({ id: docSnap.id, ...docSnap.data() });
+            }
+          });
+        }
       } else {
         const stored = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
         list = Object.values(stored).filter(w => w.ownerId === currentUser.uid || w.ownerEmail === currentUser.email);
