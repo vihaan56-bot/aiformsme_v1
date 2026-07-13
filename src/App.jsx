@@ -107,22 +107,41 @@ export default function App() {
 
     async function loadBusinessProfile() {
       setBusinessLoaded(false);
+      let foundBiz = null;
+      
       try {
-        let foundBiz = null;
         if (db) {
-          const q = query(collection(db, 'businesses'), where('ownerId', '==', user.uid || user.email));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            const docRef = snap.docs[0];
-            foundBiz = { id: docRef.id, ...docRef.data() };
+          try {
+            // 1. Try fetching business by Firebase Auth UID
+            if (user.uid) {
+              const qUid = query(collection(db, 'businesses'), where('ownerId', '==', user.uid));
+              const snapUid = await getDocs(qUid);
+              if (!snapUid.empty) {
+                const docRef = snapUid.docs[0];
+                foundBiz = { id: docRef.id, ...docRef.data() };
+              }
+            }
+
+            // 2. Try fetching business by Email (legacy backward compatibility)
+            if (!foundBiz && user.email) {
+              const qEmail = query(collection(db, 'businesses'), where('ownerId', '==', user.email));
+              const snapEmail = await getDocs(qEmail);
+              if (!snapEmail.empty) {
+                const docRef = snapEmail.docs[0];
+                foundBiz = { id: docRef.id, ...docRef.data() };
+              }
+            }
+          } catch (firestoreErr) {
+            console.warn('[FIRESTORE PROFILE FETCH WARNING]:', firestoreErr);
           }
         }
         
+        // 3. Fallback to LocalStorage profile
         if (!foundBiz) {
           const local = localStorage.getItem('aiformsme_business_config');
           if (local) {
             const parsed = JSON.parse(local);
-            if (parsed.ownerId === (user.uid || user.email)) {
+            if (parsed.ownerId === user.uid || parsed.ownerId === user.email) {
               foundBiz = parsed;
             }
           }
@@ -130,7 +149,7 @@ export default function App() {
 
         setActiveBusiness(foundBiz);
       } catch (err) {
-        console.error('Error fetching business configuration:', err);
+        console.error('Error in loadBusinessProfile:', err);
       } finally {
         setBusinessLoaded(true);
       }
