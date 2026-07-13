@@ -61,6 +61,8 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [authInitialized, setAuthInitialized] = useState(false);
+
   // Listen to Firebase Auth state
   useEffect(() => {
     if (auth) {
@@ -76,6 +78,7 @@ export default function App() {
             };
             setUser(userData);
             localStorage.setItem('aiformsme_user', JSON.stringify(userData));
+            setAuthInitialized(true);
           });
         } else {
           const localUser = localStorage.getItem('aiformsme_user');
@@ -83,17 +86,22 @@ export default function App() {
             setUser(null);
             localStorage.removeItem('aiformsme_user');
           }
+          setAuthInitialized(true);
         }
       });
       return () => unsubscribe();
+    } else {
+      setAuthInitialized(true);
     }
   }, []);
 
   // Load Business Profile
   useEffect(() => {
+    if (!authInitialized) return;
+
     if (!user) {
       setActiveBusiness(null);
-      setBusinessLoaded(false);
+      setBusinessLoaded(true);
       return;
     }
 
@@ -129,7 +137,7 @@ export default function App() {
     }
 
     loadBusinessProfile();
-  }, [user]);
+  }, [user, authInitialized]);
 
   const handleChooseTrial = (serviceId) => {
     setSelectedTrial(serviceId);
