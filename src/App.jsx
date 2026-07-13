@@ -47,6 +47,52 @@ export default function App() {
   const [activeBusiness, setActiveBusiness] = useState(null);
   const [activeDashTab, setActiveDashTab] = useState('command_center');
   const [promoPrefill, setPromoPrefill] = useState(null);
+  
+  // Track user websites to restrict dashboard access before launch
+  const [userWebsites, setUserWebsites] = useState([]);
+
+  const fetchUserWebsites = async () => {
+    if (!user) {
+      setUserWebsites([]);
+      return;
+    }
+    try {
+      let list = [];
+      if (db) {
+        if (user.uid) {
+          const qUid = query(collection(db, 'websites'), where('ownerId', '==', user.uid));
+          const snapUid = await getDocs(qUid);
+          snapUid.forEach(docSnap => {
+            list.push({ id: docSnap.id, ...docSnap.data() });
+          });
+        }
+        if (list.length === 0 && user.email) {
+          const qEmail = query(collection(db, 'websites'), where('ownerEmail', '==', user.email));
+          const snapEmail = await getDocs(qEmail);
+          snapEmail.forEach(docSnap => {
+            list.push({ id: docSnap.id, ...docSnap.data() });
+          });
+        }
+      } else {
+        const stored = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
+        list = Object.values(stored).filter(w => w.ownerId === user.uid || w.ownerEmail === user.email);
+      }
+      setUserWebsites(list);
+      
+      // Enforce the website builder tab if they haven't launched any sites yet
+      if (list.length === 0) {
+        setActiveDashTab('website');
+      }
+    } catch (err) {
+      console.warn('[WEBSITES FETCH ERROR]:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (authInitialized) {
+      fetchUserWebsites();
+    }
+  }, [user, authInitialized]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [businessLoaded, setBusinessLoaded] = useState(false);
 
@@ -534,7 +580,7 @@ export default function App() {
 
             {/* Active Demo Render */}
             <div className="glass-panel" style={{ padding: '40px', background: 'rgba(10, 15, 30, 0.4)' }}>
-              <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} />
+              <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} onWebsiteLaunched={fetchUserWebsites} />
             </div>
           </section>
         )}
@@ -567,211 +613,271 @@ export default function App() {
               <OnboardingFlow currentUser={user} onComplete={(biz) => setActiveBusiness(biz)} />
             ) : (
               <div className="dashboard-grid-layout" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: '30px', alignItems: 'stretch' }}>
-                
-                {/* Desktop Sidebar Navigation */}
-                {!isMobile && (
-                  <aside className="glass-panel" style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', justifySelf: 'stretch', gap: '8px', background: 'rgba(5, 8, 20, 0.45)', height: 'fit-content' }}>
-                    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '12px' }}>
-                      <h4 style={{ fontSize: '0.82rem', fontWeight: '700', color: 'hsl(var(--secondary-light))', textTransform: 'uppercase', margin: 0 }}>
-                        {activeBusiness.businessName}
-                      </h4>
-                      <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>AI Operator Workspace</span>
-                    </div>
+                {(() => {
+                  const hasNoWebsites = userWebsites.length === 0;
+                  return (
+                    <>
+                      {/* Desktop Sidebar Navigation */}
+                      {!isMobile && (
+                        <aside className="glass-panel" style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', justifySelf: 'stretch', gap: '8px', background: 'rgba(5, 8, 20, 0.45)', height: 'fit-content' }}>
+                          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '12px' }}>
+                            <h4 style={{ fontSize: '0.82rem', fontWeight: '700', color: 'hsl(var(--secondary-light))', textTransform: 'uppercase', margin: 0 }}>
+                              {activeBusiness.businessName}
+                            </h4>
+                            <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>AI Operator Workspace</span>
+                          </div>
 
-                    <button 
-                      onClick={() => setActiveDashTab('command_center')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'command_center' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <LayoutDashboard size={16} /> Command Center
-                    </button>
+                          {hasNoWebsites && (
+                            <div style={{ padding: '10px 12px', background: 'rgba(6, 182, 212, 0.05)', border: '1px solid rgba(6, 182, 212, 0.2)', borderRadius: '6px', fontSize: '0.7rem', color: 'hsl(var(--primary-light))', marginBottom: '12px', lineHeight: '1.4' }}>
+                              🚀 Launch your AI website below to unlock other dashboard workspaces!
+                            </div>
+                          )}
 
-                    <button 
-                      onClick={() => setActiveDashTab('leads')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'leads' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <Users size={16} /> Leads Manager
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Command Center metrics.");
+                                return;
+                              }
+                              setActiveDashTab('command_center');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'command_center' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <LayoutDashboard size={16} /> Command Center {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('followups')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'followups' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <MessageSquare size={16} /> Follow-ups
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Leads Manager.");
+                                return;
+                              }
+                              setActiveDashTab('leads');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'leads' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Users size={16} /> Leads Manager {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('marketing')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'marketing' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <Sparkles size={16} /> AI Marketing Studio
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Follow-ups.");
+                                return;
+                              }
+                              setActiveDashTab('followups');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'followups' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <MessageSquare size={16} /> Follow-ups {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('reviews')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'reviews' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'reviews' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <Terminal size={16} /> Review Responder
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock AI Marketing Studio.");
+                                return;
+                              }
+                              setActiveDashTab('marketing');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'marketing' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Sparkles size={16} /> AI Marketing Studio {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('payments')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'payments' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'payments' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <BadgeDollarSign size={16} /> Payments Tracker
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Review Responder.");
+                                return;
+                              }
+                              setActiveDashTab('reviews');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'reviews' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'reviews' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Terminal size={16} /> Review Responder {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('website')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'website' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'website' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s',
-                        borderTop: '1px solid rgba(255,255,255,0.05)',
-                        marginTop: '8px',
-                        paddingTop: '12px'
-                      }}
-                    >
-                      <Bot size={16} /> AI Website Builder
-                    </button>
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Payments Tracker.");
+                                return;
+                              }
+                              setActiveDashTab('payments');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'payments' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'payments' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <BadgeDollarSign size={16} /> Payments Tracker {hasNoWebsites && "🔒"}
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('wizard')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'wizard' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'wizard' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <Compass size={16} /> Bottleneck Audit
-                    </button>
+                          <button 
+                            onClick={() => setActiveDashTab('website')}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'website' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'website' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s',
+                              borderTop: '1px solid rgba(255,255,255,0.05)',
+                              marginTop: '8px',
+                              paddingTop: '12px'
+                            }}
+                          >
+                            <Bot size={16} /> AI Website Builder
+                          </button>
 
-                    <button 
-                      onClick={() => setActiveDashTab('settings')}
-                      style={{
-                        padding: '10px 12px',
-                        background: activeDashTab === 'settings' ? 'hsl(var(--primary) / 0.15)' : 'none',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: activeDashTab === 'settings' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <Settings size={16} /> Onboarding Settings
-                    </button>
+                          <button 
+                            onClick={() => setActiveDashTab('wizard')}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'wizard' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'wizard' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Compass size={16} /> Bottleneck Audit
+                          </button>
 
-                  </aside>
-                )}
+                          <button 
+                            onClick={() => {
+                              if (hasNoWebsites) {
+                                alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder below to unlock Onboarding Settings.");
+                                return;
+                              }
+                              setActiveDashTab('settings');
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              background: activeDashTab === 'settings' ? 'hsl(var(--primary) / 0.15)' : 'none',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: activeDashTab === 'settings' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              textAlign: 'left',
+                              cursor: hasNoWebsites ? 'not-allowed' : 'pointer',
+                              opacity: hasNoWebsites ? 0.4 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Settings size={16} /> Onboarding Settings {hasNoWebsites && "🔒"}
+                          </button>
+                        </aside>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* Dashboard Workspace panel */}
                 <div className="dashboard-view-panel" style={{ flex: 1 }}>
@@ -826,7 +932,7 @@ export default function App() {
 
                   {activeDashTab === 'website' && (
                     <div className="glass-panel" style={{ padding: '30px', background: 'rgba(10, 15, 30, 0.4)' }}>
-                      <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} />
+                      <ChatbotDemo onAddLead={handleAddLead} currentUser={user} onTriggerLogin={() => setShowAuthModal(true)} onWebsiteLaunched={fetchUserWebsites} />
                     </div>
                   )}
 
@@ -885,35 +991,68 @@ export default function App() {
                 boxShadow: '0 -4px 20px rgba(0,0,0,0.5)'
               }}>
                 <button 
-                  onClick={() => setActiveDashTab('command_center')}
-                  style={{ background: 'none', border: 'none', color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                  onClick={() => {
+                    const hasNoWebsites = userWebsites.length === 0;
+                    if (hasNoWebsites) {
+                      alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder to unlock Command Center metrics.");
+                      return;
+                    }
+                    setActiveDashTab('command_center');
+                  }}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'command_center' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem', opacity: userWebsites.length === 0 ? 0.4 : 1 }}
                 >
                   <LayoutDashboard size={18} />
-                  <span>Center</span>
-                </button>
-                <button 
-                  onClick={() => setActiveDashTab('leads')}
-                  style={{ background: 'none', border: 'none', color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
-                >
-                  <Users size={18} />
-                  <span>Leads</span>
-                </button>
-                <button 
-                  onClick={() => setActiveDashTab('marketing')}
-                  style={{ background: 'none', border: 'none', color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
-                >
-                  <Sparkles size={18} />
-                  <span>AI Studio</span>
-                </button>
-                <button 
-                  onClick={() => setActiveDashTab('followups')}
-                  style={{ background: 'none', border: 'none', color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
-                >
-                  <MessageSquare size={18} />
-                  <span>Followup</span>
+                  <span>Center {userWebsites.length === 0 && "🔒"}</span>
                 </button>
                 <button 
                   onClick={() => {
+                    const hasNoWebsites = userWebsites.length === 0;
+                    if (hasNoWebsites) {
+                      alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder to unlock Leads Manager.");
+                      return;
+                    }
+                    setActiveDashTab('leads');
+                  }}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'leads' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem', opacity: userWebsites.length === 0 ? 0.4 : 1 }}
+                >
+                  <Users size={18} />
+                  <span>Leads {userWebsites.length === 0 && "🔒"}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    const hasNoWebsites = userWebsites.length === 0;
+                    if (hasNoWebsites) {
+                      alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder to unlock AI Marketing Studio.");
+                      return;
+                    }
+                    setActiveDashTab('marketing');
+                  }}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'marketing' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem', opacity: userWebsites.length === 0 ? 0.4 : 1 }}
+                >
+                  <Sparkles size={18} />
+                  <span>AI Studio {userWebsites.length === 0 && "🔒"}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    const hasNoWebsites = userWebsites.length === 0;
+                    if (hasNoWebsites) {
+                      alert("🔒 Setup Required: Please launch your business website first using the AI Website Builder to unlock Follow-ups.");
+                      return;
+                    }
+                    setActiveDashTab('followups');
+                  }}
+                  style={{ background: 'none', border: 'none', color: activeDashTab === 'followups' ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem', opacity: userWebsites.length === 0 ? 0.4 : 1 }}
+                >
+                  <MessageSquare size={18} />
+                  <span>Followup {userWebsites.length === 0 && "🔒"}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    const hasNoWebsites = userWebsites.length === 0;
+                    if (hasNoWebsites) {
+                      setActiveDashTab('website');
+                      return;
+                    }
                     setActiveDashTab(prev => 
                       prev === 'website' ? 'payments' : prev === 'payments' ? 'settings' : prev === 'settings' ? 'website' : 'website'
                     );
@@ -921,7 +1060,7 @@ export default function App() {
                   style={{ background: 'none', border: 'none', color: ['website', 'payments', 'settings'].includes(activeDashTab) ? 'hsl(var(--primary-light))' : 'hsl(var(--text-muted))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
                 >
                   <Settings size={18} />
-                  <span>{['website', 'payments', 'settings'].includes(activeDashTab) ? activeDashTab.charAt(0).toUpperCase() + activeDashTab.slice(1) : 'More'}</span>
+                  <span>{userWebsites.length === 0 ? 'Website' : ['website', 'payments', 'settings'].includes(activeDashTab) ? activeDashTab.charAt(0).toUpperCase() + activeDashTab.slice(1) : 'More'}</span>
                 </button>
               </div>
             )}

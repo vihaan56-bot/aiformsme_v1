@@ -555,7 +555,7 @@ const TEMPLATES = {
     theme: "aqua"
   }
 };
-export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) {
+export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin, onWebsiteLaunched }) {
   // Wizard Setup Step State
   const [wizardStep, setWizardStep] = useState(1); // 1: Bot Settings, 2: Webpage Settings
 
@@ -639,6 +639,7 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       } catch (e) {}
 
       setUserWebsites(prev => prev.filter(w => w.slug !== siteSlug));
+      if (onWebsiteLaunched) onWebsiteLaunched();
       alert(`Website "/${siteSlug}" has been successfully deleted.`);
     } catch (err) {
       console.error(err);
@@ -751,6 +752,7 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
     
     // Refresh userWebsites list
     await fetchUserWebsites();
+    if (onWebsiteLaunched) onWebsiteLaunched();
 
     setWebLoading(false);
     setShowSuccessModal(true);
