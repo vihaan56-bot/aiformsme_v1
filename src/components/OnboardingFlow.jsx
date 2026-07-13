@@ -165,6 +165,10 @@ export default function OnboardingFlow({ currentUser, onComplete }) {
       updatedAt: new Date()
     };
 
+    // Assign a stable local fallback ID in case Firestore is offline or local credentials are used
+    const userSeed = currentUser?.uid || currentUser?.email || 'anonymous';
+    businessData.id = 'biz_' + userSeed.replace(/[^a-z0-9]/gi, '');
+
     // Save business profile
     if (db) {
       try {

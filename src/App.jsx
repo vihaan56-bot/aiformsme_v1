@@ -189,6 +189,10 @@ export default function App() {
             const parsed = JSON.parse(local);
             if (parsed.ownerId === user.uid || parsed.ownerId === user.email) {
               foundBiz = parsed;
+              if (!foundBiz.id) {
+                const userSeed = user.uid || user.email || 'anonymous';
+                foundBiz.id = 'biz_' + userSeed.replace(/[^a-z0-9]/gi, '');
+              }
             }
           }
         }
