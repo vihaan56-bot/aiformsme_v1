@@ -133,13 +133,8 @@ export default function App() {
 
   const handleChooseTrial = (serviceId) => {
     setSelectedTrial(serviceId);
-    setCurrentTab('demos');
-    setActiveDemo(serviceId);
-    
-    // Smooth scroll to demo workspace
-    setTimeout(() => {
-      window.scrollTo({ top: 400, behavior: 'smooth' });
-    }, 100);
+    setCurrentTab('dashboard');
+    setActiveDashTab('website');
   };
 
   const handleLoginSuccess = (userData) => {
@@ -441,14 +436,11 @@ export default function App() {
           <li className={`nav-link ${currentTab === 'home' ? 'active' : ''}`} onClick={() => navigateTo('home')}>
             Home
           </li>
-          <li className={`nav-link ${currentTab === 'demos' ? 'active' : ''}`} onClick={() => navigateTo('demos')}>
-            App Demos
-          </li>
           <li className={`nav-link ${currentTab === 'pricing' ? 'active' : ''}`} onClick={() => navigateTo('pricing')}>
             Savings Pricing
           </li>
           <li className={`nav-link ${currentTab === 'dashboard' ? 'active' : ''}`} onClick={() => navigateTo('dashboard')}>
-            Portal Dashboard
+            Dashboard
           </li>
         </ul>
 

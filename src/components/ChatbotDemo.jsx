@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Settings, User, Bot, Trash2, Download, Table, CheckSquare, Globe, Layers, Palette, Plus, Trash, ExternalLink, Copy, Check } from 'lucide-react';
 import { db, isFirebaseConfigured } from '../firebase';
-import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore';
 
 const TEMPLATES = {
   bakery: {
@@ -586,6 +586,66 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
 
+  // Sites list & upgrade check states
+  const [userWebsites, setUserWebsites] = useState([]);
+  const [loadingSites, setLoadingSites] = useState(false);
+
+  const fetchUserWebsites = async () => {
+    if (!currentUser) return;
+    setLoadingSites(true);
+    try {
+      let list = [];
+      if (isFirebaseConfigured && db) {
+        const q = query(collection(db, 'websites'), where('ownerId', '==', currentUser.uid));
+        const snap = await getDocs(q);
+        snap.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Also query ownerEmail for backward compatibility
+        const qEmail = query(collection(db, 'websites'), where('ownerEmail', '==', currentUser.email));
+        const snapEmail = await getDocs(qEmail);
+        snapEmail.forEach(docSnap => {
+          if (!list.some(item => item.id === docSnap.id)) {
+            list.push({ id: docSnap.id, ...docSnap.data() });
+          }
+        });
+      } else {
+        const stored = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
+        list = Object.values(stored).filter(w => w.ownerId === currentUser.uid || w.ownerEmail === currentUser.email);
+      }
+      setUserWebsites(list);
+    } catch (err) {
+      console.error('[WEBSITES FETCH ERROR]:', err);
+    } finally {
+      setLoadingSites(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserWebsites();
+  }, [currentUser]);
+
+  const handleDeleteWebsite = async (siteSlug) => {
+    if (!confirm(`Are you sure you want to permanently delete the website "/${siteSlug}"? This action cannot be undone.`)) return;
+    try {
+      if (isFirebaseConfigured && db) {
+        await deleteDoc(doc(db, 'websites', siteSlug));
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
+        delete stored[siteSlug];
+        localStorage.setItem('aiformsme_websites', JSON.stringify(stored));
+      } catch (e) {}
+
+      setUserWebsites(prev => prev.filter(w => w.slug !== siteSlug));
+      alert(`Website "/${siteSlug}" has been successfully deleted.`);
+    } catch (err) {
+      console.error(err);
+      alert('Could not delete the website. Please check your connection and try again.');
+    }
+  };
+
   const handleToneChange = (newTone) => {
     setAgentTone(newTone);
     setBotTrained(false);
@@ -636,19 +696,9 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
     }
   };
 
-  const handleGenerateWebsite = async (e) => {
-    e.preventDefault();
-    if (!slug.trim()) return;
-
-    if (!currentUser) {
-      alert("🔒 Authentication Required: You must be logged in to generate and launch your website. Please sign in first.");
-      if (onTriggerLogin) onTriggerLogin();
-      return;
-    }
-
-    setWebLoading(true);
+  const saveWebsiteConfiguration = async (cleanedSlug) => {
     const siteData = {
-      slug: slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, ''),
+      slug: cleanedSlug,
       bizName,
       theme: webTheme,
       template: webTemplate,
@@ -671,7 +721,8 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
         agentTone
       },
       enableBot: enableChatBot,
-      ownerEmail: currentUser?.email || 'anonymous'
+      ownerEmail: currentUser?.email || 'anonymous',
+      ownerId: currentUser?.uid || 'anonymous'
     };
 
     // Save to Firebase Firestore
@@ -697,8 +748,136 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
       ? 'https://aiformsme.co.in'
       : window.location.origin;
     setGeneratedUrl(`${baseOrigin}/${siteData.slug}`);
+    
+    // Refresh userWebsites list
+    await fetchUserWebsites();
+
     setWebLoading(false);
     setShowSuccessModal(true);
+  };
+
+  const handleGenerateWebsite = async (e) => {
+    e.preventDefault();
+    if (!slug.trim()) return;
+
+    if (!currentUser) {
+      alert("🔒 Authentication Required: You must be logged in to generate and launch your website. Please sign in first.");
+      if (onTriggerLogin) onTriggerLogin();
+      return;
+    }
+
+    setWebLoading(true);
+    const cleanedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const isNewSite = !userWebsites.some(w => w.slug === cleanedSlug);
+    const hasExistingSites = userWebsites.length > 0;
+
+    // Intercept with upgrade checkout if creating a brand new site and they already have at least 1 site
+    if (isNewSite && hasExistingSites) {
+      const confirmPay = confirm(`💼 Multi-Site Upgrade: Your plan includes 1 Free Website. To deploy an additional site "/${cleanedSlug}", a one-time upgrade payment of ₹999 is required. Proceed to checkout?`);
+      if (!confirmPay) {
+        setWebLoading(false);
+        return;
+      }
+
+      // Load Razorpay Script
+      const loadScript = () => {
+        return new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+      };
+
+      const scriptLoaded = await loadScript();
+      if (!scriptLoaded) {
+        alert("Failed to load payment gateway libraries. Check your connection.");
+        setWebLoading(false);
+        return;
+      }
+
+      try {
+        // 1. Create order on Express backend
+        const ordRes = await fetch('/api/payment/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 999 })
+        });
+        const orderData = await ordRes.json();
+
+        if (!orderData.success) {
+          throw new Error(orderData.message || "Failed to initiate payment transaction.");
+        }
+
+        // 2. Open Razorpay Checkout Dialog
+        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+
+        const options = {
+          key: keyId,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: 'AIForMSME Upgrade',
+          description: `Launch new website: /${cleanedSlug}`,
+          order_id: orderData.simulated ? undefined : orderData.order_id,
+          handler: async function (response) {
+            // Verify payment on backend
+            try {
+              const verifyRes = await fetch('/api/payment/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: orderData.order_id,
+                  razorpay_payment_id: response.razorpay_payment_id || 'pay_simulated',
+                  razorpay_signature: response.razorpay_signature || 'sig_simulated'
+                })
+              });
+              const verifyData = await verifyRes.json();
+
+              if (verifyData.success) {
+                await saveWebsiteConfiguration(cleanedSlug);
+              } else {
+                alert(`Payment verification failed: ${verifyData.message}`);
+                setWebLoading(false);
+              }
+            } catch (err) {
+              console.error(err);
+              alert("Payment verification connection error.");
+              setWebLoading(false);
+            }
+          },
+          prefill: {
+            email: currentUser.email,
+            contact: bizPhone || ''
+          },
+          theme: {
+            color: '#06b6d4'
+          }
+        };
+
+        if (orderData.simulated) {
+          alert("[BILLING SIMULATOR] Simulated order initiated for ₹999. Opening mock validator...");
+          setTimeout(() => {
+            options.handler({
+              razorpay_payment_id: `pay_sim_${Math.random().toString(36).substring(7)}`,
+              razorpay_signature: `sig_sim_${Math.random().toString(36).substring(7)}`
+            });
+          }, 1000);
+        } else {
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert(`Checkout failed: ${err.message || err}`);
+        setWebLoading(false);
+      }
+      return;
+    }
+
+    // Free site (very first site or editing an existing site)
+    await saveWebsiteConfiguration(cleanedSlug);
   };
 
   const copyToClipboard = () => {
@@ -1133,6 +1312,106 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin }) 
 
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      
+      {/* Configured Deployed Websites List */}
+      {currentUser && (
+        <div className="glass-panel animate-slide-up" style={{ padding: '24px', background: 'rgba(6, 182, 212, 0.03)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} style={{ color: 'hsl(var(--primary-light))' }} />
+                Your Launched Websites
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', margin: '4px 0 0 0' }}>
+                Manage or delete your active websites. Your account plan includes 1 Free Website (₹999 fee for each additional site).
+              </p>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '20px' }}>
+              Sites: {userWebsites.length} Deployed
+            </span>
+          </div>
+
+          {loadingSites ? (
+            <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Loading launched websites...</div>
+          ) : userWebsites.length === 0 ? (
+            <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', fontStyle: 'italic' }}>
+              No websites deployed yet. Complete the steps below to publish your first site!
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              {userWebsites.map(site => {
+                const siteUrl = `${window.location.origin}/${site.slug}`;
+                return (
+                  <div key={site.slug} className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ overflow: 'hidden' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'white', margin: 0 }}>{site.bizName}</h4>
+                      <a href={siteUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.72rem', color: 'hsl(var(--primary-light))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                        /{site.slug} <ExternalLink size={10} />
+                      </a>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button 
+                        onClick={() => {
+                          setBizName(site.bizName);
+                          setSlug(site.slug);
+                          setWebTheme(site.theme || 'amber');
+                          setWebTemplate(site.template || 'bakery');
+                          setWebTitle(site.title || '');
+                          setWebSubtitle(site.subtitle || '');
+                          setWebAbout(site.about || '');
+                          setProductsList(site.products || []);
+                          setBizPhone(site.bizPhone || '');
+                          setBizHours(site.bizHours || '');
+                          setEnablePayments(site.enablePayments || false);
+                          setRazorpayKeyId(site.razorpayKeyId || '');
+                          setRazorpayKeySecret(site.razorpayKeySecret || '');
+                          setEnableChatBot(site.enableBot || false);
+                          
+                          if (site.botConfig) {
+                            setSystemPrompt(site.botConfig.systemPrompt || '');
+                            setRequireEmail(site.botConfig.requireEmail || false);
+                            setRequirePhone(site.botConfig.requirePhone || false);
+                            setSelectedModel(site.botConfig.selectedModel || 'openrouter/free');
+                            setApiKey(site.botConfig.apiKey || '');
+                            setAgentTone(site.botConfig.agentTone || 'friendly');
+                          }
+                          
+                          alert(`Loaded configurations for "${site.bizName}". Make your changes and click Generate & Launch to redeploy.`);
+                        }}
+                        className="btn-outline" 
+                        style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                      >
+                        Edit
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleDeleteWebsite(site.slug)}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          color: '#f87171',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Delete Website"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="chatbot-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'stretch' }}>
         
         {/* Left Column: Setup Wizard */}
