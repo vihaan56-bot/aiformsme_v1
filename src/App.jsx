@@ -42,6 +42,7 @@ export default function App() {
   // Authentication State
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('aiformsme_user') || 'null'));
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   // Business Profile & Command Center state
   const [activeBusiness, setActiveBusiness] = useState(null);
@@ -107,7 +108,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [authInitialized, setAuthInitialized] = useState(false);
 
   // Listen to Firebase Auth state
   useEffect(() => {
