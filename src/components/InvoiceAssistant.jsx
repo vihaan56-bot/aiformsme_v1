@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, BadgeDollarSign, Calendar, Plus, Eye, Copy, Check, RefreshCw, Send, AlertCircle, Trash2 } from 'lucide-react';
+import { Sparkles, BadgeDollarSign, Calendar, Plus, Eye, Copy, Check, RefreshCw, Send, AlertCircle, Trash2, Loader } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
