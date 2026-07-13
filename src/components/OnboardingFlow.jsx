@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Sparkles, Check, ArrowRight, Bot, MessageSquare, Users, Calendar, Megaphone, BadgeDollarSign, ShieldAlert } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
 
 export default function OnboardingFlow({ currentUser, onComplete }) {
   const [step, setStep] = useState(1);
@@ -70,6 +70,89 @@ export default function OnboardingFlow({ currentUser, onComplete }) {
     setAnimating(false);
   };
 
+  const getDefaultSiteTemplate = (type, name, phone) => {
+    const templates = {
+      bakery: {
+        template: 'bakery',
+        theme: 'amber',
+        title: 'Artisanal Breads & Delectable Pastries Baked Daily',
+        subtitle: `Welcome to ${name}, where every item is baked with love and fresh ingredients.`,
+        about: `${name} specializes in sourdoughs, croissants, custom cakes, and sweet treats baked from scratch using organic stone-ground grains.`,
+        products: [
+          { name: 'Sourdough Country Loaf', price: '₹150', desc: 'Naturally leavened crusty bread, baked in stone hearth.' },
+          { name: 'Almond Croissant', price: '₹120', desc: 'Twice-baked flaky croissant filled with sweet almond frangipane.' }
+        ]
+      },
+      salon: {
+        template: 'salon',
+        theme: 'rose',
+        title: 'Relax. Rejuvenate. Rediscover Your Glow.',
+        subtitle: `Premium beauty treatments and organic skincare at ${name}.`,
+        about: 'Our boutique spa offers a peaceful escape from daily life. We use premium botanicals and advanced styling techniques to restore your natural balance.',
+        products: [
+          { name: 'Signature Organic Facial', price: '₹1,999', desc: 'Deep cleansing treatment using customized botanical extracts.' },
+          { name: 'Aromatherapy Swedish Massage', price: '₹2,500/hr', desc: 'Full-body relaxation therapy with essential oils.' }
+        ]
+      },
+      clinic: {
+        template: 'dental',
+        theme: 'aqua',
+        title: 'Gentle Care for Healthy, Radiant Smiles',
+        subtitle: `State-of-the-art clinic care at ${name} in a comforting environment.`,
+        about: 'We provide personalized medical and wellness care. Our experienced staff utilizes modern tools and digital scans to maintain your long-term health.',
+        products: [
+          { name: 'Routine Health Checkup', price: '₹999', desc: 'Complete consultation, blood pressure monitoring, and health advice.' },
+          { name: 'Wellness Consultation', price: 'Free', desc: '1-on-1 lifestyle analysis and nutrition audit.' }
+        ]
+      },
+      restaurant: {
+        template: 'bakery',
+        theme: 'amber',
+        title: 'Delicious Hot Meals & Refreshing Beverages',
+        subtitle: `Experience fine culinary dining at ${name}.`,
+        about: 'We combine local ingredients and seasonal spices to prepare comforting recipes and premium coffees.',
+        products: [
+          { name: 'Chef Special Pasta', price: '₹349', desc: 'Fresh handmade pasta in garlic cream cheese sauce.' },
+          { name: 'Brewed Espresso Coffee', price: '₹140', desc: 'Single-origin roasted beans extracted perfectly.' }
+        ]
+      },
+      shop: {
+        template: 'services',
+        theme: 'breeze',
+        title: 'Premium Quality Daily Goods & Groceries',
+        subtitle: `Your neighborhood retail shop: ${name}.`,
+        about: 'Providing fresh vegetables, domestic utilities, packaged groceries, and home delivery services at affordable prices.',
+        products: [
+          { name: 'Premium Rice (5kg)', price: '₹350', desc: 'Double-polished Basmati grain.' },
+          { name: 'Organic Cold-Pressed Oil', price: '₹220', desc: '1 Litre pure mustard extract.' }
+        ]
+      },
+      services: {
+        template: 'services',
+        theme: 'breeze',
+        title: 'Scale Your Operations. Dominate Your Market.',
+        subtitle: `Tailored business development and coaching solutions from ${name}.`,
+        about: 'We help small and medium enterprises optimize their workflows and integrate cutting-edge systems to increase productivity.',
+        products: [
+          { name: 'Operational Bottleneck Audit', price: '₹9,999', desc: 'Comprehensive review of your systems with a detailed roadmap.' },
+          { name: 'Custom AI Setup Consult', price: 'Free', desc: '1-on-1 workflow analysis and automation design.' }
+        ]
+      },
+      other: {
+        template: 'services',
+        theme: 'breeze',
+        title: 'Empowering Your Everyday Life',
+        subtitle: `Customized local solutions tailored for you by ${name}.`,
+        about: 'We are committed to delivering top-tier services, upfront pricing, and absolute reliability for our customers.',
+        products: [
+          { name: 'Standard Service Package', price: '₹2,500', desc: 'All-inclusive startup optimization service.' }
+        ]
+      }
+    };
+
+    return templates[type] || templates['other'];
+  };
+
   const handleFinish = async () => {
     const businessData = {
       ownerId: currentUser?.uid || currentUser?.email || 'anonymous',
@@ -82,7 +165,7 @@ export default function OnboardingFlow({ currentUser, onComplete }) {
       updatedAt: new Date()
     };
 
-    // Save to Firestore
+    // Save business profile
     if (db) {
       try {
         const docRef = await addDoc(collection(db, 'businesses'), businessData);
@@ -92,9 +175,54 @@ export default function OnboardingFlow({ currentUser, onComplete }) {
       }
     }
 
-    // Save to LocalStorage fallback for local session mirror (not primary storage)
+    // Auto-create default website config so the dashboard launches with a live site
+    const siteSlug = bizName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/_+/g, '_');
+    const defaultTemplate = getDefaultSiteTemplate(bizType, bizName.trim(), bizPhone.trim());
+
+    const defaultSiteData = {
+      slug: siteSlug,
+      bizName: bizName.trim(),
+      theme: defaultTemplate.theme,
+      template: defaultTemplate.template,
+      title: defaultTemplate.title,
+      subtitle: defaultTemplate.subtitle,
+      about: defaultTemplate.about,
+      products: defaultTemplate.products,
+      bizPhone: bizPhone.trim() || 'N/A',
+      bizHours: 'Monday - Saturday: 9:00 AM - 7:00 PM\nSunday: Closed',
+      enablePayments: false,
+      botConfig: {
+        bizName: bizName.trim(),
+        systemPrompt: `You are a helpful AI assistant for ${bizName.trim()}. Help customers answer questions about our services and contact details. Prompt them for their name, email, or phone number to book an appointment or inquire about pricing.`,
+        requireEmail: true,
+        requirePhone: false,
+        selectedModel: 'openrouter/free',
+        apiKey: '',
+        agentTone: 'friendly'
+      },
+      enableBot: true,
+      ownerEmail: currentUser?.email || 'anonymous',
+      ownerId: currentUser?.uid || 'anonymous',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Save default site to Firestore websites/{slug}
+    if (db) {
+      try {
+        await setDoc(doc(db, 'websites', siteSlug), defaultSiteData);
+        console.log('[ONBOARDING] Automatically created default template website for:', siteSlug);
+      } catch (err) {
+        console.error('[ONBOARDING] Auto website creation doc failed:', err);
+      }
+    }
+
+    // Save configurations locally
     try {
       localStorage.setItem('aiformsme_business_config', JSON.stringify(businessData));
+      const storedSites = JSON.parse(localStorage.getItem('aiformsme_websites') || '{}');
+      storedSites[siteSlug] = defaultSiteData;
+      localStorage.setItem('aiformsme_websites', JSON.stringify(storedSites));
     } catch (e) {}
 
     onComplete(businessData);
