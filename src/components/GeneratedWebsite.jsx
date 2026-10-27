@@ -672,7 +672,7 @@ export default function GeneratedWebsite({ slug, onBackToPlatform }) {
         throw new Error(orderData.message || "Failed to initiate payment transaction.");
       }
 
-      const keyId = siteConfig.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+      const keyId = siteConfig.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TgEqQIJXMDmabP';
 
       const options = {
         key: keyId,

@@ -63,7 +63,7 @@ export default function DonationPanel() {
       }
 
       // 2. Open Razorpay Dialog
-      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TgEqQIJXMDmabP';
       
       const options = {
         key: keyId,

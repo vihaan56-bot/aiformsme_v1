@@ -818,7 +818,7 @@ export default function ChatbotDemo({ onAddLead, currentUser, onTriggerLogin, on
         }
 
         // 2. Open Razorpay Checkout Dialog
-        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SmUWHtuEGpIsUR';
+        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TgEqQIJXMDmabP';
 
         const options = {
           key: keyId,

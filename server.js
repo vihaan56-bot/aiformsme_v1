@@ -304,7 +304,7 @@ app.post('/api/auth/login', (req, res) => {
 
 // Initialize Razorpay Instance helper
 const getRazorpayInstance = (customKeyId, customKeySecret) => {
-  const keyId = customKeyId || process.env.RAZORPAY_KEY_ID;
+  const keyId = customKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TgEqQIJXMDmabP';
   const keySecret = customKeySecret || process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) {
     console.log('[RAZORPAY] Credentials missing. Running in Sandbox Simulation mode.');
